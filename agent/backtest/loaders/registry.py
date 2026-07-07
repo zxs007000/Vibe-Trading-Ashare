@@ -35,6 +35,7 @@ VALID_SOURCES: set[str] = {
     "okx",
     "yfinance",
     "akshare",
+    "astockdata",
     "baostock",
     "tencent",
     "mootdx",
@@ -79,6 +80,7 @@ def _ensure_registered() -> None:
         "backtest.loaders.okx",
         "backtest.loaders.yfinance_loader",
         "backtest.loaders.akshare_loader",
+        "backtest.loaders.astockdata_loader",
         "backtest.loaders.baostock_loader",
         "backtest.loaders.tencent_loader",
         "backtest.loaders.mootdx_loader",
@@ -122,7 +124,7 @@ _NO_NETWORK_FALLBACK_SOURCES: frozenset[str] = frozenset({"local"})
 # that must be politely throttled; Finnhub/AlphaVantage/Tiingo/FMP are key-gated
 # REST fallbacks placed deeper in the chain.
 FALLBACK_CHAINS: dict[str, list[str]] = {
-    "a_share":   ["tencent", "mootdx", "eastmoney", "baostock", "akshare", "tushare", "local"],
+    "a_share":   ["astockdata", "tencent", "mootdx", "eastmoney", "baostock", "akshare", "tushare", "local"],
     "us_equity": ["yahoo", "stooq", "sina", "eastmoney", "yfinance", "tiingo", "fmp", "finnhub", "alphavantage", "akshare", "local"],
     "hk_equity": ["eastmoney", "yahoo", "futu", "yfinance", "akshare", "local"],
     "crypto":    ["okx", "ccxt", "yfinance", "local"],

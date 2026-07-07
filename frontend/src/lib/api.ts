@@ -1,4 +1,5 @@
 import { authHeaders, withAuthQuery } from "@/lib/apiAuth";
+import type { FactorCosmosResponse } from "@/lib/factorCosmos";
 
 const BASE = "";
 
@@ -189,6 +190,23 @@ export const api = {
     }),
   alphaCompareStreamUrl: (jobId: string) =>
     withAuthQuery(`${BASE}/alpha/compare/${encodeURIComponent(jobId)}/stream`),
+
+  // Factor Cosmos (starfield) API
+  getFactorCosmos: (params: FactorCosmosParams = {}) => {
+    const q = new URLSearchParams();
+    if (params.universe) q.set("universe", params.universe);
+    if (params.period) q.set("period", params.period);
+    if (params.limit !== undefined) q.set("limit", String(params.limit));
+    const qs = q.toString();
+    return request<FactorCosmosResponse>(`/factor-cosmos${qs ? `?${qs}` : ""}`, {
+      method: "POST",
+      body: JSON.stringify({
+        universe: params.universe ?? "csi300",
+        period: params.period ?? "2y",
+        limit: params.limit ?? 600,
+      }),
+    });
+  },
 
   // Connector runtime channel — privileged surface actions (NOT agent tools).
   // commit is the ONLY action that writes a mandate; halt trips the kill switch.
@@ -690,6 +708,12 @@ export interface AlphaListParams {
   zoo?: string;
   theme?: string;
   universe?: string;
+  limit?: number;
+}
+
+export interface FactorCosmosParams {
+  universe?: string;
+  period?: string;
   limit?: number;
 }
 

@@ -993,6 +993,13 @@ from src.api.live_routes import (  # noqa: F401, E402
 from src.api.alpha_routes import register_alpha_routes  # noqa: E402
 register_alpha_routes(app)
 
+# ============================================================================
+# Factor Cosmos routes (Web UI starfield) — src/api/factor_cosmos.py
+# ============================================================================
+
+from src.api.factor_cosmos import register_factor_cosmos_routes  # noqa: E402
+register_factor_cosmos_routes(app)
+
 
 # ============================================================================
 # Scheduled Research Routes - defined in src/api/scheduled_routes.py

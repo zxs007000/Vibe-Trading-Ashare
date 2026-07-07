@@ -25,6 +25,15 @@ const Correlation = lazy(() =>
 const AlphaZoo = lazy(() =>
   import("@/pages/AlphaZoo").then((m) => ({ default: m.AlphaZoo })),
 );
+const FactorCosmos = lazy(() =>
+  import("@/pages/FactorCosmos").then((m) => ({ default: m.FactorCosmos })),
+);
+const Backtest = lazy(() =>
+  import("@/pages/Backtest").then((m) => ({ default: m.Backtest })),
+);
+const FactorAnalysis = lazy(() =>
+  import("@/pages/FactorAnalysis").then((m) => ({ default: m.FactorAnalysis })),
+);
 
 function PageLoader() {
   return (
@@ -58,6 +67,9 @@ export const router = createBrowserRouter([
       { path: "/alpha-zoo/bench", element: wrap(AlphaZoo) },
       { path: "/alpha-zoo/compare", element: wrap(AlphaZoo) },
       { path: "/alpha-zoo/:alphaId", element: wrap(AlphaZoo) },
+      { path: "/factor-cosmos", element: wrap(FactorCosmos) },
+      { path: "/backtest", element: wrap(Backtest) },
+      { path: "/factor-analysis", element: wrap(FactorAnalysis) },
     ],
   },
 ]);

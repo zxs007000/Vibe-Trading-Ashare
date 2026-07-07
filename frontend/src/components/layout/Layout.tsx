@@ -1,12 +1,13 @@
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation, useSearchParams } from "react-router-dom";
-import { Activity, BarChart3, Bot, Check, ChevronDown, FileText, Languages, Moon, Sun, Plus, Trash2, Pencil, MessageSquare, ChevronsLeft, ChevronsRight, Settings, Layers, Loader2 } from "lucide-react";
+import { Activity, BarChart3, Bot, Check, ChevronDown, FileText, Languages, Moon, Sun, Plus, Trash2, Pencil, MessageSquare, ChevronsLeft, ChevronsRight, Settings, Layers, Loader2, Sparkles, Database, Sigma } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDarkMode } from "@/hooks/useDarkMode";
 import { api, type SessionItem } from "@/lib/api";
 import { useAgentStore } from "@/stores/agent";
 import { ConnectionBanner } from "@/components/layout/ConnectionBanner";
+import { DesktopPet } from "@/components/pet/DesktopPet";
 import { SUPPORTED_LANGUAGES } from "@/i18n";
 
 // APP_VERSION is sourced from i18n locale files (app.version key) to keep a
@@ -21,6 +22,9 @@ export function Layout() {
     { to: "/runtime", icon: Activity, label: t('layout.runtime') },
     { to: "/reports", icon: FileText, label: t('layout.reports') },
     { to: "/alpha-zoo", icon: Layers, label: t('layout.alphaZoo') },
+    { to: "/factor-cosmos", icon: Sparkles, label: t('layout.factorCosmos') },
+    { to: "/backtest", icon: Database, label: t('layout.backtest') },
+    { to: "/factor-analysis", icon: Sigma, label: t('layout.factorAnalysis') },
     { to: "/settings", icon: Settings, label: t('layout.settings') },
     { to: "/correlation", icon: BarChart3, label: t('layout.correlation') },
   ];
@@ -31,7 +35,12 @@ export function Layout() {
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const sseStatus = useAgentStore(s => s.sseStatus);
   const sseRetryAttempt = useAgentStore(s => s.sseRetryAttempt);
-  const [collapsed, setCollapsed] = useState(() => localStorage.getItem("qa-sidebar") === "collapsed");
+  const [collapsed, setCollapsed] = useState(() => {
+    // Default collapsed on mobile (sidebar eats too much space)
+    const saved = localStorage.getItem("qa-sidebar");
+    if (saved === "expanded" || saved === "collapsed") return saved === "collapsed";
+    return window.innerWidth < 1024;
+  });
 
   const activeSessionId = searchParams.get("session");
   const streamingSessionId = useAgentStore(s => s.streamingSessionId);
@@ -74,16 +83,16 @@ export function Layout() {
   };
 
   return (
-    <div className="flex h-screen bg-background rtl:flex-row-reverse">
-      {/* Sidebar */}
+    <div className="flex h-screen bg-[var(--dash-bg)] rtl:flex-row-reverse">
+      {/* Sidebar — terminal aesthetic, shared with the dashboard palette */}
       <aside className={cn(
-        "border-e bg-card flex flex-col shrink-0 transition-all duration-200 overflow-visible",
+        "border-e border-[var(--dash-border)] bg-[var(--dash-bg)] font-mono flex flex-col shrink-0 transition-all duration-200 overflow-visible",
         collapsed ? "w-12" : "w-64"
       )}>
         {/* Brand */}
-        <div className={cn("border-b", collapsed ? "p-2 flex justify-center" : "p-4")}>
+        <div className={cn("border-b border-[var(--dash-border)]", collapsed ? "p-2 flex justify-center" : "p-4")}>
           <Link to="/" className={cn("flex items-center font-bold text-base tracking-tight", collapsed ? "justify-center" : "gap-2")}>
-            <BarChart3 className="h-5 w-5 text-primary shrink-0" />
+            <BarChart3 className="h-5 w-5 text-[var(--dash-accent-orange)] shrink-0" />
             {!collapsed && "Vibe-Trading"}
           </Link>
         </div>
@@ -97,11 +106,11 @@ export function Layout() {
                 key={to}
                 to={to}
                 className={cn(
-                  "flex items-center rounded-md text-sm transition-colors",
+                  "flex items-center rounded-md text-sm transition-colors border-s-2 border-s-transparent",
                   collapsed ? "justify-center p-2" : "gap-3 px-3 py-2",
                   (to === "/" ? pathname === "/" : pathname.startsWith(to))
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "bg-[var(--dash-surface-2)] text-[var(--dash-accent-cyan)] font-medium border-s-[var(--dash-accent-cyan)]"
+                    : "text-[var(--dash-dim)] hover:bg-[var(--dash-surface)] hover:text-[var(--dash-text)]"
                 )}
                 title={collapsed ? text : undefined}
               >
@@ -114,15 +123,15 @@ export function Layout() {
 
         {/* Sessions — hidden when collapsed */}
         {!collapsed && (
-          <div className="flex-1 overflow-auto border-t mt-2 flex flex-col">
+          <div className="flex-1 overflow-auto border-t border-[var(--dash-border)] mt-2 flex flex-col">
             <div className="flex items-center justify-between px-4 py-2">
-              <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <span className="flex items-center gap-1.5 text-xs font-medium text-[var(--dash-dim)]">
                 <MessageSquare className="h-3.5 w-3.5" />
                 {t('layout.sessions')}
               </span>
               <Link
                 to="/agent"
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                className="flex items-center gap-1 text-xs text-[var(--dash-dim)] hover:text-[var(--dash-text)] transition-colors"
                 title={t('layout.newChat')}
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -133,11 +142,11 @@ export function Layout() {
               {sessionsLoading ? (
                 <div className="space-y-1.5 px-2 py-1">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-7 rounded-md bg-muted/50 animate-pulse" />
+                    <div key={i} className="h-7 rounded-md bg-[var(--dash-surface)] animate-pulse" />
                   ))}
                 </div>
               ) : sessions.length === 0 ? (
-                <p className="px-3 py-2 text-xs text-muted-foreground/60">{t('layout.noSessions')}</p>
+                <p className="px-3 py-2 text-xs text-[var(--dash-dim)]/60">{t('layout.noSessions')}</p>
               ) : null}
               {sessions.map((s) => {
                 const isActive = s.session_id === activeSessionId;
@@ -152,7 +161,7 @@ export function Layout() {
                         onChange={(e) => setRenameValue(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") renameSession(s.session_id); if (e.key === "Escape") setRenameTarget(null); }}
                         onBlur={() => renameSession(s.session_id)}
-                        className="flex-1 min-w-0 ps-3 pe-2 py-1 rounded-md text-xs border border-primary bg-background outline-none"
+                        className="flex-1 min-w-0 ps-3 pe-2 py-1 rounded-md text-xs border border-[var(--dash-accent-cyan)] bg-[var(--dash-surface)] outline-none text-[var(--dash-text)]"
                       />
                     ) : (
                       <Link
@@ -160,18 +169,18 @@ export function Layout() {
                         className={cn(
                           "flex-1 min-w-0 ps-3 pe-14 py-1.5 rounded-md text-xs transition-colors truncate block border-s-2",
                           isActive
-                            ? "border-s-primary bg-primary/10 text-primary font-medium"
-                            : "border-s-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+                            ? "border-s-[var(--dash-accent-cyan)] bg-[var(--dash-surface-2)] text-[var(--dash-accent-cyan)] font-medium"
+                            : "border-s-transparent text-[var(--dash-dim)] hover:bg-[var(--dash-surface)] hover:text-[var(--dash-text)]"
                         )}
                         title={s.title || s.session_id}
                       >
                         <span className="flex items-center gap-1.5">
                           {streamingSessionId === s.session_id ? (
-                            <Loader2 className="h-3 w-3 shrink-0 animate-spin text-primary" />
+                            <Loader2 className="h-3 w-3 shrink-0 animate-spin text-[var(--dash-accent-cyan)]" />
                           ) : (
                             <span className={cn(
                               "h-1.5 w-1.5 rounded-full shrink-0",
-                              isActive ? "bg-primary/70" : "bg-muted-foreground/40"
+                              isActive ? "bg-[var(--dash-accent-cyan)]/70" : "bg-[var(--dash-dim)]/40"
                             )} />
                           )}
                           {s.title || s.session_id.slice(0, 16)}
@@ -180,21 +189,21 @@ export function Layout() {
                     )}
                     {!isRenaming && isDeleting ? (
                       <div className="absolute right-0.5 flex items-center gap-0.5">
-                        <button onClick={() => deleteSession(s.session_id)} className="p-1 text-danger hover:bg-danger/10 rounded text-[10px] font-medium">{t('layout.confirm')}</button>
-                        <button onClick={() => setDeleteTarget(null)} className="p-1 text-muted-foreground hover:bg-muted rounded text-[10px]">{t('layout.cancel')}</button>
+                        <button onClick={() => deleteSession(s.session_id)} className="p-1 text-[var(--dash-accent-pink)] hover:bg-[var(--dash-accent-pink)]/10 rounded text-[10px] font-medium">{t('layout.confirm')}</button>
+                        <button onClick={() => setDeleteTarget(null)} className="p-1 text-[var(--dash-dim)] hover:bg-[var(--dash-surface)] rounded text-[10px]">{t('layout.cancel')}</button>
                       </div>
                     ) : !isRenaming ? (
                       <div className="absolute right-1 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
                         <button
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); setRenameTarget(s.session_id); setRenameValue(s.title || ""); }}
-                          className="p-1 text-muted-foreground hover:text-foreground rounded"
+                          className="p-1 text-[var(--dash-dim)] hover:text-[var(--dash-text)] rounded"
                           title={t('layout.rename')}
                         >
                           <Pencil className="h-3 w-3" />
                         </button>
                         <button
                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeleteTarget(s.session_id); }}
-                          className="p-1 text-muted-foreground hover:text-danger rounded"
+                          className="p-1 text-[var(--dash-dim)] hover:text-[var(--dash-accent-pink)] rounded"
                           title={t('layout.delete')}
                         >
                           <Trash2 className="h-3 w-3" />
@@ -212,13 +221,13 @@ export function Layout() {
         {collapsed && <div className="flex-1" />}
 
         {/* Footer */}
-        <div className={cn("border-t", collapsed ? "p-1 flex flex-col items-center gap-1" : "p-3 space-y-2")}>
+        <div className={cn("border-t border-[var(--dash-border)]", collapsed ? "p-1 flex flex-col items-center gap-1" : "p-3 space-y-2")}>
           {collapsed ? (
             <>
-              <button onClick={toggle} className="p-1.5 text-muted-foreground hover:text-foreground rounded transition-colors" title={dark ? t('layout.light') : t('layout.dark')}>
+              <button onClick={toggle} className="p-1.5 text-[var(--dash-dim)] hover:text-[var(--dash-text)] rounded transition-colors" title={dark ? t('layout.light') : t('layout.dark')}>
                 {dark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
               </button>
-              <button onClick={() => setCollapsed(false)} className="p-1.5 text-muted-foreground hover:text-foreground rounded transition-colors" title={t('layout.expand')}>
+              <button onClick={() => setCollapsed(false)} className="p-1.5 text-[var(--dash-dim)] hover:text-[var(--dash-text)] rounded transition-colors" title={t('layout.expand')}>
                 <ChevronsRight className="h-3.5 w-3.5" />
               </button>
             </>
@@ -227,7 +236,7 @@ export function Layout() {
               <div className="flex items-center justify-between">
                 <button
                   onClick={toggle}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  className="flex items-center gap-1.5 text-xs text-[var(--dash-dim)] hover:text-[var(--dash-text)] transition-colors"
                 >
                   {dark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
                   {dark ? t('layout.light') : t('layout.dark')}
@@ -235,7 +244,7 @@ export function Layout() {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setCollapsed(true)}
-                    className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors"
+                    className="p-1 text-[var(--dash-dim)] hover:text-[var(--dash-text)] rounded transition-colors"
                     title={t('layout.collapse')}
                   >
                     <ChevronsLeft className="h-3.5 w-3.5" />
@@ -244,7 +253,7 @@ export function Layout() {
               </div>
               <div className="flex flex-col gap-1">
                 <LanguageSwitcher />
-                <p className="text-[10px] text-muted-foreground/60">{t('app.version')}</p>
+                <p className="text-[10px] text-[var(--dash-dim)]/60">{t('app.version')}</p>
               </div>
             </>
           )}
@@ -258,6 +267,9 @@ export function Layout() {
           <Outlet />
         </main>
       </div>
+
+      {/* 桌宠:始终可见的 AI 入口 */}
+      <DesktopPet />
     </div>
   );
 }
@@ -283,7 +295,7 @@ function LanguageSwitcher() {
 
   useEffect(() => {
     if (!open) return;
-    const onClick = (e: MouseEvent | TouchEvent) => {
+    const onClick = (e: Event) => {
       if (
         triggerRef.current &&
         !triggerRef.current.contains(e.target as Node) &&
@@ -301,7 +313,7 @@ function LanguageSwitcher() {
     return () => {
       document.removeEventListener("mousedown", onClick);
       document.removeEventListener("touchstart", onClick);
-      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("scroll", onClick, true);
     };
   }, [open]);
 
@@ -358,7 +370,7 @@ function LanguageSwitcher() {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t("layout.language")}
-        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        className="flex items-center gap-1 text-xs text-[var(--dash-dim)] hover:text-[var(--dash-text)] transition-colors"
       >
         <Languages className="h-3.5 w-3.5 shrink-0" />
         <span className="whitespace-nowrap">{current.label}</span>
@@ -375,7 +387,7 @@ function LanguageSwitcher() {
             minWidth: menuStyle.minWidth,
             zIndex: 60,
           }}
-          className="rounded-md border border-border bg-popover shadow-lg ring-1 ring-black/5"
+          className="rounded-md border border-[var(--dash-border)] bg-[var(--dash-surface)] shadow-lg ring-1 ring-black/5"
         >
           {SUPPORTED_LANGUAGES.map((lang) => {
             const active = lang.code === current.code;
@@ -389,12 +401,12 @@ function LanguageSwitcher() {
                   }}
                   aria-current={active || undefined}
                   className={cn(
-                    "w-full flex items-center gap-2 px-2.5 py-1.5 text-xs hover:bg-muted hover:text-foreground transition-colors",
-                    active && "text-foreground",
+                    "w-full flex items-center gap-2 px-2.5 py-1.5 text-xs hover:bg-[var(--dash-surface-2)] hover:text-[var(--dash-text)] transition-colors",
+                    active && "text-[var(--dash-text)]",
                   )}
                 >
                   <span className="flex-1 text-start whitespace-nowrap">{lang.label}</span>
-                  {active && <Check className="h-3 w-3 shrink-0" />}
+                  {active && <Check className="h-3 w-3 shrink-0 text-[var(--dash-accent-cyan)]" />}
                 </button>
               </li>
             );

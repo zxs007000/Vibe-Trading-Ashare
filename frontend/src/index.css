@@ -42,6 +42,22 @@
     --chart-compare-b: #f59e0b;
   }
 
+  /* Dashboard / terminal palette — global so the sidebar can share it */
+  --dash-bg: #070710;
+  --dash-surface: #0c0c1a;
+  --dash-surface-2: #111128;
+  --dash-border: #1e1e3a;
+  --dash-border-glow: rgba(255, 107, 0, 0.15);
+  --dash-text: #d8d8f0;
+  --dash-text-bright: #f0f0ff;
+  --dash-dim: #5a5a80;
+  --dash-accent-orange: #ff6b00;
+  --dash-accent-green: #00e676;
+  --dash-accent-pink: #ff2d6a;
+  --dash-accent-cyan: #00d4ff;
+  --dash-accent-yellow: #ffd000;
+  --dash-accent-purple: #b388ff;
+
   .dark {
     /* Dark mode: 4-level surface system */
     --background: 220 20% 5%;       /* bg-base */
@@ -99,3 +115,76 @@
 
 /* RTL: mirror directional icons (chevrons, arrows) automatically */
 [dir="rtl"] .rtl\:flip-x { transform: scaleX(-1); }
+
+/* ═══════════════════════════════════════════════
+   Dashboard — Gravia terminal aesthetic (scoped)
+   Applied via className="dashboard" on page root.
+   ═══════════════════════════════════════════════ */
+.dashboard {
+  --dash-glow-orange: 0 0 24px rgba(255,107,0,0.35);
+  --dash-glow-green: 0 0 20px rgba(0,230,118,0.25);
+  --dash-glow-cyan: 0 0 18px rgba(0,212,255,0.25);
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, monospace;
+
+  background: var(--dash-bg);
+  color: var(--dash-text);
+  min-height: 100vh;
+}
+
+/* KPI card glow borders */
+.dashboard .kpi-card {
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  border-radius: 10px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.dashboard .kpi-card:hover {
+  border-color: var(--dash-border-glow);
+  box-shadow: var(--dash-glow-orange);
+}
+
+/* Neon text effects */
+.dashboard .text-neon-orange {
+  color: var(--dash-accent-orange);
+  text-shadow: 0 0 12px rgba(255,107,0,0.5), 0 0 4px rgba(255,107,0,0.3);
+}
+.dashboard .text-neon-green {
+  color: var(--dash-accent-green);
+  text-shadow: 0 0 12px rgba(0,230,118,0.45), 0 0 4px rgba(0,230,118,0.25);
+}
+.dashboard .text-neon-cyan {
+  color: var(--dash-accent-cyan);
+  text-shadow: 0 0 12px rgba(0,212,255,0.45), 0 0 4px rgba(0,212,255,0.25);
+}
+.dashboard .text-neon-pink {
+  color: var(--dash-accent-pink);
+  text-shadow: 0 0 12px rgba(255,45,106,0.45), 0 0 4px rgba(255,45,106,0.25);
+}
+
+/* Live pulse dot */
+@keyframes dash-live-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--dash-accent-green); }
+  50%      { opacity: 0.5; box-shadow: 0 0 14px var(--dash-accent-green); }
+}
+.dashboard .live-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--dash-accent-green);
+  animation: dash-live-pulse 2s ease-in-out infinite;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Ticker scroll */
+@keyframes dash-ticker-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.dashboard .ticker-wrap {
+  overflow: hidden;
+  white-space: nowrap;
+}
+.dashboard .ticker-inner {
+  display: inline-block;
+  animation: dash-ticker-scroll 30s linear infinite;
+}

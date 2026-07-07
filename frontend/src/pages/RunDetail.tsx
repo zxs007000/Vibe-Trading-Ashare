@@ -25,6 +25,7 @@ import { CandlestickChart } from "@/components/charts/CandlestickChart";
 import { EquityChart } from "@/components/charts/EquityChart";
 import { MetricsCard } from "@/components/chat/MetricsCard";
 import { ValidationPanel } from "@/components/charts/ValidationPanel";
+import { BacktestMetricsPanel } from "@/components/charts/BacktestMetricsPanel";
 import { Skeleton, SkeletonMetrics, SkeletonChart } from "@/components/common/Skeleton";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 
@@ -260,6 +261,9 @@ export function RunDetail() {
         </div>
         {run.prompt && <p className="text-sm text-muted-foreground">{run.prompt}</p>}
         {run.metrics && <MetricsCard metrics={run.metrics as Record<string, number>} />}
+        {run.equity_curve && run.equity_curve.length > 1 && (
+          <BacktestMetricsPanel metrics={run.metrics ?? null} equityCurve={run.equity_curve} />
+        )}
 
         <div className="flex items-center gap-1">
           {TABS.filter(t => !t.hidden).map(({ id, label, icon: Icon }) => (
