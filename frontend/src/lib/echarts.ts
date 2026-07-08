@@ -5,6 +5,7 @@ import {
   BarChart,
   HeatmapChart,
   RadarChart,
+  GaugeChart,
 } from "echarts/charts";
 import {
   GridComponent,
@@ -21,7 +22,7 @@ import {
 import { CanvasRenderer } from "echarts/renderers";
 
 echarts.use([
-  CandlestickChart, LineChart, BarChart, HeatmapChart, RadarChart,
+  CandlestickChart, LineChart, BarChart, HeatmapChart, RadarChart, GaugeChart,
   GridComponent, TooltipComponent, LegendComponent,
   DataZoomComponent, MarkPointComponent,
   ToolboxComponent, MarkLineComponent, MarkAreaComponent,

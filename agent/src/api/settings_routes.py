@@ -89,6 +89,12 @@ class UpdateDataSourceSettingsRequest(BaseModel):
     clear_tushare_token: bool = False
 
 
+class SetPreferredDataSourceRequest(BaseModel):
+    """Persist the user's preferred backtest data source."""
+
+    preferred_source: str = Field(..., min_length=1)
+
+
 # ---------------------------------------------------------------------------
 # Provider metadata (settings-exclusive)
 # ---------------------------------------------------------------------------
@@ -119,6 +125,68 @@ LLM_PROVIDER_BY_NAME = {provider.name: provider for provider in LLM_PROVIDERS}
 LLM_REASONING_EFFORTS = {"", "low", "medium", "high", "max"}
 LLM_API_KEY_PLACEHOLDERS = {"", "sk-or-v1-your-key-here", "sk-xxx", "xxx", "gsk_xxx"}
 TUSHARE_TOKEN_PLACEHOLDERS = {"", "your-tushare-token"}
+
+# Friendly, UI-facing descriptions for the known backtest data sources. The
+# canonical name set lives in ``backtest.loaders.registry.VALID_SOURCES``; this
+# map is display-only and falls back to the raw name for anything unknown.
+_DATA_SOURCE_DESCRIPTIONS: Dict[str, str] = {
+    "auto": "自动选择：按市场回退链挑选可用源",
+    "tushare": "Tushare（需 token）",
+    "akshare": "AKShare（免费公共接口）",
+    "tencent": "腾讯财经行情（免费）",
+    "eastmoney": "东方财富行情（免费）",
+    "sina": "新浪财经行情（免费）",
+    "baostock": "BaoStock（免费，TCP 协议）",
+    "mootdx": "通达信 TDX（需 tdxpy）",
+    "local": "本地数据桥（CSV/Parquet，需配置）",
+    "yfinance": "Yahoo Finance（美股/全球）",
+    "yahoo": "Yahoo Finance（免费）",
+    "stooq": "Stooq（免费 EOD）",
+    "okx": "OKX（加密货币）",
+    "ccxt": "CCXT（加密货币交易所）",
+    "futu": "富途（需账号）",
+    "finnhub": "Finnhub（需 token）",
+    "alphavantage": "Alpha Vantage（需 token）",
+    "tiingo": "Tiingo（需 token）",
+    "fmp": "Financial Modeling Prep（需 token）",
+    "sec_edgar": "SEC EDGAR（美股基本面）",
+    "rsshub_events": "RSSHub 事件流（需自建实例）",
+    "stock_worm": "Stock-Worm 本地库（通达信优先，免 token）",
+}
+
+
+def _list_data_sources(preferred: Optional[str]) -> List[Dict[str, Any]]:
+    """Return every valid backtest data source with availability + preferred flag.
+
+    ``VALID_SOURCES`` is the single source of truth shared by the backtest
+    config schema and the agent backtest tool, so this endpoint automatically
+    includes any newly registered loader (e.g. ``stock_worm``) without a frontend
+    change.
+    """
+    from backtest.loaders.registry import VALID_SOURCES, LOADER_REGISTRY, _ensure_registered
+
+    _ensure_registered()
+    items: List[Dict[str, Any]] = []
+    for name in sorted(VALID_SOURCES):
+        available = False
+        if name == "auto":
+            available = True
+        else:
+            try:
+                cls = LOADER_REGISTRY.get(name)
+                if cls is not None:
+                    available = bool(cls().is_available())
+            except Exception:
+                available = False
+        items.append(
+            {
+                "name": name,
+                "available": available,
+                "description": _DATA_SOURCE_DESCRIPTIONS.get(name, name),
+                "is_preferred": bool(preferred and name == preferred),
+            }
+        )
+    return items
 
 
 # ---------------------------------------------------------------------------
@@ -428,3 +496,35 @@ def register_settings_routes(
         return _build_data_source_settings_response(
             host_ref._read_env_values(host_ref.ENV_PATH)
         )
+
+    @app.get(
+        "/backtest/data-sources",
+        dependencies=[Depends(require_local_or_auth)],
+    )
+    async def list_backtest_data_sources():
+        """List all valid backtest data sources with availability (single source of truth)."""
+        host_ref = _host()
+        values = host_ref._read_env_values(host_ref.ENV_PATH)
+        preferred = (values.get("PREFERRED_DATA_SOURCE") or "").strip() or None
+        return {"preferred_source": preferred, "sources": _list_data_sources(preferred)}
+
+    @app.put(
+        "/backtest/data-sources",
+        dependencies=[Depends(require_settings_write_auth)],
+    )
+    async def set_backtest_data_source(payload: SetPreferredDataSourceRequest):
+        """Save the preferred backtest data source to agent/.env."""
+        from backtest.loaders.registry import VALID_SOURCES
+
+        if payload.preferred_source not in VALID_SOURCES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"unknown data source {payload.preferred_source!r}; must be one of {sorted(VALID_SOURCES)}",
+            )
+        host_ref = _host()
+        host_ref._write_env_values(host_ref.ENV_PATH, {"PREFERRED_DATA_SOURCE": payload.preferred_source})
+        os.environ["PREFERRED_DATA_SOURCE"] = payload.preferred_source
+        return {
+            "preferred_source": payload.preferred_source,
+            "sources": _list_data_sources(payload.preferred_source),
+        }

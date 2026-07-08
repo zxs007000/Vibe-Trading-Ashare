@@ -3,6 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Theme: defaults to DARK (:root has dark tokens). Adds .light only when user chose light.
+         Must stay in sync with src/hooks/useDarkMode.ts (localStorage key "vt-theme"). -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem("vt-theme");
+          if (saved === "light") document.documentElement.classList.add("light");
+        } catch (e) {}
+      })();
+    </script>
     <title>Vibe-Trading — vibe trading with your professional financial agent team</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com">

@@ -43,6 +43,7 @@ export function DesktopPet() {
   const dragOff = useRef({ dx: 0, dy: 0 });
   const esRef = useRef<EventSource | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const prevOpen = useRef(false);
   const greetKey = i18n.language === "zh-CN" ? "deskpet.greetingZh" : "deskpet.greeting";
 
   // 自动滚动到底部
@@ -50,9 +51,12 @@ export function DesktopPet() {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
   }, [messages, open, minimized]);
 
-  // 进入聊天时,若有历史会话则加载消息
+  // 仅在「面板打开的瞬间」加载历史会话; 发送过程中 setSid 不再触发重载,
+  // 避免把乐观添加的 [用户, 助手占位] 覆盖成服务端 [用户], 导致 SSE text_delta 找不到占位而“无回应”。
   useEffect(() => {
-    if (!open || !sid) return;
+    const justOpened = open && !prevOpen.current;
+    prevOpen.current = open;
+    if (!justOpened || !sid) return;
     api
       .getSessionMessages(sid)
       .then((msgs) => {

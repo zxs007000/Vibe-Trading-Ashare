@@ -155,6 +155,12 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(settings),
     }),
+  getBacktestDataSources: () => request<DataSourceList>("/backtest/data-sources"),
+  setBacktestDataSource: (preferred_source: string) =>
+    request<DataSourceList>("/backtest/data-sources", {
+      method: "PUT",
+      body: JSON.stringify({ preferred_source }),
+    }),
   getChannelStatus: () => request<ChannelRuntimeStatus>("/channels/status"),
   startChannels: () => request<ChannelRuntimeActionResponse>("/channels/start", { method: "POST" }),
   stopChannels: () => request<ChannelRuntimeActionResponse>("/channels/stop", { method: "POST" }),
@@ -207,6 +213,16 @@ export const api = {
       }),
     });
   },
+
+  // Dashboard (首页仪表盘: 行情 / K线 / 组合)
+  getDashboardMarket: () => request<DashboardMarketResponse>("/dashboard/market"),
+  getDashboardKline: (code: string, isIndex = true, count = 120) =>
+    request<DashboardKlineResponse>(
+      `/dashboard/kline?code=${encodeURIComponent(code)}&is_index=${isIndex}&count=${count}`,
+    ),
+  getDashboardPortfolio: () => request<DashboardPortfolioResponse>("/dashboard/portfolio"),
+  getDashboardMarketState: () =>
+    request<DashboardMarketStateResponse>("/dashboard/market-state"),
 
   // Connector runtime channel — privileged surface actions (NOT agent tools).
   // commit is the ONLY action that writes a mandate; halt trips the kill switch.
@@ -310,6 +326,18 @@ export interface DataSourceSettings {
   env_path: string;
 }
 
+export interface DataSourceOption {
+  name: string;
+  available: boolean;
+  description: string;
+  is_preferred: boolean;
+}
+
+export interface DataSourceList {
+  preferred_source: string | null;
+  sources: DataSourceOption[];
+}
+
 export interface UpdateDataSourceSettingsRequest {
   tushare_token?: string;
   clear_tushare_token?: boolean;
@@ -390,10 +418,111 @@ export interface TradeMarker {
   text?: string;
 }
 
+// ─── Dashboard (首页仪表盘) 数据类型 ───
+
+export interface DashboardIndex {
+  code: string;
+  name: string;
+  last: number;
+  prev_close: number;
+  open: number;
+  change: number;
+  pct: number;
+  source: "realtime" | "demo";
+}
+
+export interface DashboardMarketResponse {
+  indices: DashboardIndex[];
+  source: "realtime" | "demo";
+}
+
+export interface DashboardKlineBar {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export interface DashboardKlineResponse {
+  code: string;
+  is_index: boolean;
+  bars: DashboardKlineBar[];
+  source: "realtime" | "demo";
+}
+
+export interface PortfolioHolding {
+  code: string;
+  name: string;
+  shares: number;
+  cost: number;
+  last: number;
+  prev_close: number;
+  value: number;
+  day_pnl: number;
+  day_pct: number;
+  total_pnl: number;
+  total_pct: number;
+  source: "realtime" | "demo";
+}
+
+export interface PortfolioEquityPoint {
+  date: string;
+  value: number;
+}
+
+export interface DashboardPortfolioResponse {
+  cash: number;
+  positions_value: number;
+  total_value: number;
+  day_pnl: number;
+  day_pct: number;
+  total_pnl: number;
+  total_pct: number;
+  equity_curve: PortfolioEquityPoint[];
+  holdings: PortfolioHolding[];
+  source: "realtime" | "demo";
+}
+
 export interface EquityPoint {
   time: string;
   equity: string | number;
   drawdown: string | number;
+}
+
+/* ══════════════════════════════════════════
+   Dashboard · 大盘 8 态择时 (来自 /dashboard/market-state)
+   ══════════════════════════════════════════ */
+
+export type MarketStateMatch = "preferred" | "neutral" | "avoid";
+
+export interface MarketStateData {
+  state: string;
+  label_zh: string;
+  confidence: number;
+  since_date: string;
+  duration_days: number;
+  snapshot: {
+    close: number;
+    ma60: number;
+    ma250: number;
+    ret20_pct: number;
+    ret5_pct: number;
+    vol20_annual_pct: number;
+  };
+  recommended: Array<{
+    chain_id: string;
+    name_zh: string;
+    match: MarketStateMatch;
+    score: number;
+  }>;
+  recent_transitions: Array<{ date: string; label_zh: string }>;
+}
+
+export interface DashboardMarketStateResponse {
+  market_state: MarketStateData;
+  source: "realtime" | "demo";
 }
 
 export interface ValidationData {

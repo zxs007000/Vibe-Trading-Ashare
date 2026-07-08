@@ -24,7 +24,7 @@ let _cacheKey = "";
 
 function buildTheme() {
   const cn = isChinese();
-  const isDark = document.documentElement.classList.contains("dark");
+  const isDark = !document.documentElement.classList.contains("light");
 
   const successHex = hslToHex(css("--success")) || "#22c55e";
   const dangerHex = hslToHex(css("--danger")) || "#ef4444";

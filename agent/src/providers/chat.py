@@ -111,7 +111,11 @@ class ProviderStreamError(RuntimeError):
         """
         if self.status_code is None:
             return True
-        if self.status_code in (408, 429):
+        # 408/429 are explicitly retryable. 499 ("客户端已主动断开连接",
+        # Tencent/Hunyuan gateway_error) is a transient connection/gateway
+        # blip — our httpx client reset mid-stream — NOT a deterministic
+        # client error, so a fresh connection should be retried once.
+        if self.status_code in (408, 429, 499):
             return True
         return not 400 <= self.status_code < 500
 

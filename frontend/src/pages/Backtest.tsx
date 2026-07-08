@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { LucideIcon } from "lucide-react";
@@ -19,6 +19,7 @@ import {
   Cpu,
 } from "lucide-react";
 import { echarts } from "@/lib/echarts";
+import { api } from "@/lib/api";
 
 /* ────────────────────────────────────────────────────────────
  * 数据：7 大回测引擎 + 3 大统计检验 + 影子账户
@@ -359,6 +360,51 @@ function MethodCardView({ m, index }: { m: MethodCard; index?: number }) {
 
 export function Backtest() {
   const { t } = useTranslation();
+  const [sources, setSources] = useState<{ name: string; available: boolean; description: string; is_preferred: boolean }[]>([]);
+  const [preferredSource, setPreferredSource] = useState<string>("auto");
+  const [loadingSources, setLoadingSources] = useState(true);
+  const [savingSource, setSavingSource] = useState(false);
+  const [sourceMsg, setSourceMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    setLoadingSources(true);
+    api
+      .getBacktestDataSources()
+      .then((data) => {
+        if (!alive) return;
+        setSources(data.sources);
+        setPreferredSource(data.preferred_source || "auto");
+      })
+      .catch(() => {
+        if (alive) setSources([]);
+      })
+      .finally(() => {
+        if (alive) setLoadingSources(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const onSourceChange = async (value: string) => {
+    setPreferredSource(value);
+    setSavingSource(true);
+    setSourceMsg(null);
+    try {
+      const data = await api.setBacktestDataSource(value);
+      setSources(data.sources);
+      setPreferredSource(data.preferred_source || value);
+      setSourceMsg(t("backtestLab.dataSourceSaved", "已保存偏好数据源"));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setSourceMsg(t("backtestLab.dataSourceSaveFailed", "保存失败：") + msg);
+    } finally {
+      setSavingSource(false);
+    }
+  };
+
+  const currentAvailable = sources.find((s) => s.name === preferredSource)?.available ?? true;
 
   return (
     <div className="mx-auto w-full max-w-[1440px] px-4 py-5 md:px-6">
@@ -378,15 +424,49 @@ export function Backtest() {
       </div>
 
       {/* 数据源面板 */}
-      <div className="mt-4 flex flex-col gap-3 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-surface)] p-4 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-2 text-sm font-medium text-[var(--dash-text-bright)]">
-          <Database className="h-4 w-4 text-[var(--dash-accent-cyan)]" />
-          {t("backtestLab.dataSourceTitle")}
+      <div className="mt-4 flex flex-col gap-3 rounded-xl border border-[var(--dash-border)] bg-[var(--dash-surface)] p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-2 text-sm font-medium text-[var(--dash-text-bright)]">
+            <Database className="h-4 w-4 text-[var(--dash-accent-cyan)]" />
+            {t("backtestLab.dataSourceTitle")}
+          </div>
+          <p className="flex-1 text-[13px] leading-relaxed text-[var(--dash-text)]">{t("backtestLab.dataSourceDesc")}</p>
+          <div className="flex items-center gap-2">
+            <span className="text-[12px] text-[var(--dash-dim)]">{t("backtestLab.dataSourceSelectLabel", "偏好数据源")}</span>
+            <select
+              value={preferredSource}
+              onChange={(e) => onSourceChange(e.target.value)}
+              disabled={loadingSources || savingSource}
+              className="max-w-[260px] rounded-md border border-[var(--dash-border)] bg-[var(--dash-surface-2)] px-3 py-2 text-[13px] text-[var(--dash-text-bright)] outline-none transition-colors focus:border-[var(--dash-accent-cyan)] disabled:opacity-50"
+            >
+              <option value="" disabled>
+                {loadingSources
+                  ? t("backtestLab.loadingSources", "加载中…")
+                  : t("backtestLab.selectSourcePlaceholder", "选择数据源")}
+              </option>
+              {sources.map((s) => (
+                <option key={s.name} value={s.name}>
+                  {s.name}
+                  {s.name === "stock_worm" ? " ★" : ""}
+                  {s.available ? "" : "（不可用）"} — {s.description}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-        <p className="flex-1 text-[13px] leading-relaxed text-[var(--dash-text)]">{t("backtestLab.dataSourceDesc")}</p>
-        <code className="rounded-md border border-[var(--dash-border)] bg-[var(--dash-surface-2)] px-2 py-1 text-[10px] text-[var(--dash-dim)]">
-          {t("backtestLab.dataSourceChain")}
-        </code>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-[var(--dash-dim)]">
+          <span>
+            {t("backtestLab.dataSourceCurrent", "当前选择")}：
+            <code className="ml-1 rounded border border-[var(--dash-border)] bg-[var(--dash-surface-2)] px-1.5 py-0.5 text-[11px] text-[var(--dash-text-bright)]">
+              {preferredSource}
+            </code>
+          </span>
+          <span className="hidden sm:inline">{t("backtestLab.dataSourceChain")}</span>
+          {!currentAvailable && (
+            <span className="text-[var(--dash-accent-pink)]">· {t("backtestLab.dataSourceUnavailable", "该数据源当前不可用，请检查网络或依赖（通达信需 tdxpy）")}</span>
+          )}
+          {sourceMsg && <span className="text-[var(--dash-accent-cyan)]">· {sourceMsg}</span>}
+        </div>
       </div>
 
       {/* 7 大引擎 */}

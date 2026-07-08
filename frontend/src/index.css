@@ -4,37 +4,56 @@
 
 @layer base {
   :root {
-    /* Light mode surfaces */
-    --background: 220 20% 98%;
-    --foreground: 220 20% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 220 20% 10%;
+    color-scheme: dark;
+    /* Dark mode surfaces — DEFAULT (terminal aesthetic) */
+    --background: 220 20% 5%;
+    --foreground: 220 10% 92%;
+    --card: 220 20% 8%;
+    --card-foreground: 220 10% 92%;
 
-    /* Popover: a slightly elevated surface used for floating menus,
-       tooltips, and the language switcher dropdown. Falls back to a
-       solid white (light) or surface-1 (dark) so dropdowns never
-       appear transparent and let underlying content bleed through. */
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 10%;
+    --popover: 220 20% 9%;
+    --popover-foreground: 220 10% 92%;
 
     /* Brand accent */
     --primary: 27 90% 52%;
     --primary-foreground: 0 0% 100%;
 
+    --muted: 220 20% 13%;
+    --muted-foreground: 220 10% 55%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 20% 18%;
+    --radius: 0.5rem;
+
+    /* Semantic colors */
+    --success: 142 71% 45%;
+    --danger: 0 62% 50%;
+    --warning: 38 92% 50%;
+    --info: 217 91% 60%;
+
+    /* Chart tokens */
+    --chart-grid: 220 20% 12%;
+    --chart-text: 220 10% 42%;
+    --chart-axis: 220 20% 22%;
+    --chart-compare-a: #60a5fa;
+    --chart-compare-b: #fbbf24;
+  }
+
+  /* Light mode — only when user explicitly toggles to light via .light on <html> */
+  .light {
+    color-scheme: light;
+    --background: 220 20% 98%;
+    --foreground: 220 20% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 10%;
     --muted: 220 14% 92%;
     --muted-foreground: 220 14% 46%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --border: 220 14% 87%;
-    --radius: 0.5rem;
-
-    /* Semantic colors */
-    --success: 142 71% 45%;
     --danger: 0 84% 60%;
-    --warning: 38 92% 50%;
-    --info: 217 91% 60%;
-
-    /* Chart tokens */
     --chart-grid: 220 14% 90%;
     --chart-text: 220 14% 46%;
     --chart-axis: 220 14% 80%;
@@ -57,39 +76,6 @@
   --dash-accent-cyan: #00d4ff;
   --dash-accent-yellow: #ffd000;
   --dash-accent-purple: #b388ff;
-
-  .dark {
-    /* Dark mode: 4-level surface system */
-    --background: 220 20% 5%;       /* bg-base */
-    --foreground: 220 10% 92%;
-    --card: 220 20% 8%;             /* surface-1 */
-    --card-foreground: 220 10% 92%;
-
-    --popover: 220 20% 9%;          /* surface-1.5 (slightly lighter than card) */
-    --popover-foreground: 220 10% 92%;
-
-    --primary: 27 90% 52%;
-    --primary-foreground: 0 0% 100%;
-
-    --muted: 220 20% 13%;           /* surface-2 */
-    --muted-foreground: 220 10% 55%;
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 220 20% 18%;          /* surface-3 */
-
-    /* Semantic colors */
-    --success: 142 71% 45%;
-    --danger: 0 62% 50%;
-    --warning: 38 92% 50%;
-    --info: 217 91% 60%;
-
-    /* Chart tokens */
-    --chart-grid: 220 20% 12%;
-    --chart-text: 220 10% 42%;
-    --chart-axis: 220 20% 22%;
-    --chart-compare-a: #60a5fa;
-    --chart-compare-b: #fbbf24;
-  }
 
   * { @apply border-border; }
   body { @apply bg-background text-foreground; }
@@ -126,7 +112,12 @@
   --dash-glow-cyan: 0 0 18px rgba(0,212,255,0.25);
   font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, monospace;
 
-  background: var(--dash-bg);
+  /* Subtle nebula glow so the dashboard never reads as flat black emptiness */
+  background:
+    radial-gradient(1200px 620px at 12% -8%, rgba(255,107,0,0.07), transparent 60%),
+    radial-gradient(1100px 560px at 96% 0%, rgba(0,212,255,0.06), transparent 58%),
+    radial-gradient(900px 700px at 50% 120%, rgba(179,136,255,0.05), transparent 60%),
+    var(--dash-bg);
   color: var(--dash-text);
   min-height: 100vh;
 }
@@ -137,10 +128,19 @@
   border: 1px solid var(--dash-border);
   border-radius: 10px;
   transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: inset 0 0 22px rgba(120,120,200,0.03);
 }
 .dashboard .kpi-card:hover {
   border-color: var(--dash-border-glow);
   box-shadow: var(--dash-glow-orange);
+}
+
+/* Neon accent edge for the gauge / heatmap panels */
+.dashboard .neon-edge {
+  border-color: rgba(0,212,255,0.22);
+  box-shadow:
+    inset 0 0 26px rgba(0,212,255,0.05),
+    0 0 18px rgba(255,107,0,0.06);
 }
 
 /* Neon text effects */

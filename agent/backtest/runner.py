@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, model_validator, field_validator
+from pydantic import BaseModel, ConfigDict, model_validator, field_validator, Field
 
 try:
     from dotenv import load_dotenv
@@ -50,6 +50,19 @@ _VALID_INTERVALS = {"1m", "5m", "15m", "30m", "1H", "4H", "1D"}
 _VALID_ENGINES = {"daily", "options"}
 
 
+def _default_source() -> str:
+    """Default backtest data source.
+
+    Honors ``PREFERRED_DATA_SOURCE`` (set via the Web UI / agent/.env) so the
+    user's chosen source is used when a run does not specify one; falls back to
+    ``tushare`` for backwards compatibility.
+    """
+    env = (os.environ.get("PREFERRED_DATA_SOURCE") or "").strip()
+    if env and env in VALID_SOURCES:
+        return env
+    return "tushare"
+
+
 class BacktestConfigSchema(BaseModel):
     """Validates backtest config.json before execution."""
 
@@ -58,7 +71,7 @@ class BacktestConfigSchema(BaseModel):
     codes: List[str]
     start_date: str
     end_date: str
-    source: str = "tushare"
+    source: str = Field(default_factory=_default_source)
     interval: str = "1D"
     engine: str = "daily"
     fundamental_fields: Optional[Dict[str, List[str]]] = None

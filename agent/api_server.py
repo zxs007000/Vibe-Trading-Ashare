@@ -1000,6 +1000,13 @@ register_alpha_routes(app)
 from src.api.factor_cosmos import register_factor_cosmos_routes  # noqa: E402
 register_factor_cosmos_routes(app)
 
+# ============================================================================
+# Dashboard routes (Web UI 首页: 行情 / K线 / 组合) — src/api/dashboard_routes.py
+# ============================================================================
+
+from src.api.dashboard_routes import register_dashboard_routes  # noqa: E402
+register_dashboard_routes(app)
+
 
 # ============================================================================
 # Scheduled Research Routes - defined in src/api/scheduled_routes.py
