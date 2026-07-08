@@ -62,9 +62,9 @@ def _fetch_sw(codes: List[str], periods: int = 12) -> Dict[str, pd.DataFrame]:
             # 净利率 = 归母净利 / 营业总收入（stock_worm 季报无直接净利率字段）
             net_margin = (netprofit / income) if (income and income != 0) else None
             # 现金含量 = 每股经营现金流 / EPS
-            cash_content = (ocf_ps / eps) if (eps and eps != 0) else None
+            cash_content = (ocf_ps / eps) if (ocf_ps is not None and eps and eps != 0) else None
             # 应计利润代理 = (EPS - 每股OCF) / 每股净资产 ≈ (NI-OCF)/权益
-            accruals = ((eps - ocf_ps) / bvps) if (bvps and bvps != 0) else None
+            accruals = ((eps - ocf_ps) / bvps) if (ocf_ps is not None and bvps and bvps != 0) else None
             recs.append({
                 "report_date": rd,
                 "roe": roe,

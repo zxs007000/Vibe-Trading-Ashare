@@ -8,53 +8,90 @@
 用法：
   cd D:/Vibe-Trading-Ashare
   .venv/Scripts/python.exe agent/backtest/verify_financial_neutral.py
+
+K线源: stock_worm.mootdx_source.get_kline_history (通达信 TCP 直连, 自动翻页, 无需代理).
+指数对冲: market_neutral (akshare 新浪指数源直连, 不依赖代理).
 """
 
 from __future__ import annotations
 
-import sys
+import sys, socket
+socket.setdefaulttimeout(12)  # 防 mootdx recv 永久阻塞导致进程闷死
 import logging
+import time
 import numpy as np
 import pandas as pd
+
+_STOCK_WORM_SRC = r"D:\stcok-worm"
+if _STOCK_WORM_SRC not in sys.path:
+    sys.path.insert(0, _STOCK_WORM_SRC)
 
 sys.path.insert(0, "agent/src")
 from dotenv import load_dotenv
 load_dotenv("agent/.env")
 
-from backtest.loaders.stock_worm_loader import DataLoader
 from backtest.loaders.financial_loader import fetch_fundamentals, latest_as_of
 import backtest.market_neutral as mn
 
 logging.basicConfig(level=logging.WARNING)
 log = logging.getLogger("verify")
 
-UNIVERSE_N = 40
+UNIVERSE_N = 100
 START = "2023-01-01"
 END = "2026-07-08"
 
 
 def build_universe(n: int) -> list[str]:
-    """取 CSI300 成分股前 n 只（akshare 无 token）。"""
-    import akshare as ak
-    cons = ak.index_stock_cons(symbol="000300")
-    # 代码形如 600519.SH → 去掉后缀
-    codes = [str(c).split(".")[0] for c in cons["品种代码"].tolist()]
-    return codes[:n]
+    """取 CSI300 成分股前 n 只 (stock_worm 东财报表, 直连通)."""
+    from stcok_worm._session import eastmoney_datacenter
+    try:
+        rows = eastmoney_datacenter("RPT_INDEX_CONSTITUENT", columns="ALL",
+                                    filter_str='(INDEX_CODE="000300")', page_size=1000)
+        codes = []
+        for r in rows:
+            v = r.get("SECUCODE") or r.get("SECURITY_CODE") or r.get("CODE")
+            if v:
+                codes.append(str(v).split(".")[0])
+        codes = [c for c in codes if c]
+        if codes:
+            return codes[:n]
+    except Exception as e:  # noqa
+        print(f"  [warn] stock_worm eastmoney cons failed: {e}")
+    # 回退硬编码蓝筹
+    return [
+        "600519","000858","601318","600036","000333","601899","300750","601166",
+        "600900","000651","600276","601398","000001","603259","600030","002415",
+        "601288","600809","000725","601088","601012","002714","000002","600887",
+        "601857","600028","601688","300059","600585","600309","600436","002594",
+        "601225","603288","002304","000568","601066","600104","000776","300498",
+    ][:n]
 
 
 def fetch_prices(codes: list[str]) -> dict[str, pd.DataFrame]:
-    dl = DataLoader()
-    raw = dl.fetch(codes, START, END, interval="1D")
-    out = {}
-    for c, df in raw.items():
-        if df is not None and not df.empty and len(df) >= 250:
+    """K线 (stock_worm.mootdx 通达信 TCP 直连, 翻页全历史), 切片到 [START,END].
+
+    不用 akshare / 不依赖代理; mootdx 为单 TCP 连接, 串行拉取。
+    """
+    from stcok_worm import mootdx_source as mdx
+    out: dict[str, pd.DataFrame] = {}
+    for c in codes:
+        rows = mdx.get_kline_history(c, total=2000)
+        if not rows:
+            continue
+        df = pd.DataFrame(rows, columns=["date", "open", "close", "high", "low", "volume", "amount"])
+        df["date"] = pd.to_datetime(df["date"])
+        df = df.set_index("date").sort_index()
+        df = df[(df.index >= START) & (df.index <= END)]
+        if len(df) >= 250:
             out[c] = df
     return out
 
 
 def build_score(prices: dict[str, pd.DataFrame], fin: dict[str, pd.DataFrame]) -> pd.DataFrame:
     """复合打分 = 价值(vs_ma250 截面z) + 质量(ROE 截面z)。"""
-    close = pd.DataFrame({c: df["close"] for c, df in prices.items()}).sort_index()
+    close = pd.DataFrame({c: df["close"] for c, df in prices.items()})
+    close.index = pd.to_datetime(close.index)
+    close = close.sort_index()
     # 价值：价格相对250日均线（A股最强反转信号）
     val = close / close.rolling(250, min_periods=120).mean() - 1.0
     # 质量：ROE 按报告期前向填充到交易日
@@ -62,9 +99,9 @@ def build_score(prices: dict[str, pd.DataFrame], fin: dict[str, pd.DataFrame]) -
     for c in close.columns:
         fd = fin.get(c)
         if fd is not None and not fd.empty:
-            # 构造 per-trade-date 的 ROE 序列（报告期前向填充）
             tmp = fd.set_index("report_date")["roe"].dropna()
             if not tmp.empty:
+                tmp.index = pd.to_datetime(tmp.index)  # 字符串→datetime, 否则 reindex 全 NaN
                 qual[c] = tmp.reindex(close.index, method="ffill")
     # 截面 z-score（每日横截面标准化）
     def zs(df):
@@ -95,7 +132,7 @@ def main() -> None:
     codes = build_universe(UNIVERSE_N)
     print(f"     取成分 {len(codes)} 只")
 
-    print(f"[2/4] 拉行情(stock_worm) + 基本面(financial_loader)...")
+    print(f"[2/4] 拉行情(stock_worm.mootdx) + 基本面(financial_loader)...")
     prices = fetch_prices(codes)
     print(f"     行情可用 {len(prices)} 只")
     fin = fetch_fundamentals(list(prices.keys()), use_cache=True)
@@ -103,7 +140,9 @@ def main() -> None:
     print(f"     基本面可用 {has_fin} 只（ROE 非空）")
 
     print(f"[3/4] 财务因子 IC 检验（ROE / vs_ma250）...")
-    close = pd.DataFrame({c: df["close"] for c, df in prices.items()}).sort_index()
+    close = pd.DataFrame({c: df["close"] for c, df in prices.items()})
+    close.index = pd.to_datetime(close.index)
+    close = close.sort_index()
     fwd = close.pct_change(fill_method=None).shift(-20)  # 20日 forward return
     val = close / close.rolling(250, min_periods=120).mean() - 1.0
     ic_val = ic_of(val, fwd)
@@ -114,6 +153,7 @@ def main() -> None:
         if fd is not None and not fd.empty:
             tmp = fd.set_index("report_date")["roe"].dropna()
             if not tmp.empty:
+                tmp.index = pd.to_datetime(tmp.index)  # 字符串→datetime
                 roe[c] = tmp.reindex(close.index, method="ffill")
     ic_roe = ic_of(roe, fwd)
     print(f"     IC(vs_ma250 价值) = {ic_val:+.3f}")
