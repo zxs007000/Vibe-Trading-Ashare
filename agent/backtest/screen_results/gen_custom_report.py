@@ -7,6 +7,7 @@ RES = Path(__file__).parent
 
 fd = pd.read_csv(RES / "custom_founder_eval.csv", index_col=0)
 ht = pd.read_csv(RES / "custom_huatai_eval.csv", index_col=0)
+gh = pd.read_csv(RES / "custom_guosheng_haitong_eval.csv", index_col=0)
 zoo = pd.read_csv(RES / "zoo_screen_20260709_090025.csv")
 zoo_top = zoo[zoo["status"] == "ok"].sort_values("ls_sharpe", ascending=False).head(5)
 
@@ -27,8 +28,9 @@ def direction(ic):
 def fmt_rows(df, src_label):
     rows = []
     for name, r in df.iterrows():
+        nm = name.replace("HT:", "").replace("GS:", "").replace("HA:", "")
         prof = abs(r["ls_sharpe"]) if pd.notna(r["ls_sharpe"]) else np.nan
-        rows.append((name.replace("HT:", ""), r["状态"], r["ic_mean"], r["icir"],
+        rows.append((nm, r["状态"], r["ic_mean"], r["icir"],
                      r["ls_sharpe"], prof, direction(r["ic_mean"])))
     rows.sort(key=lambda x: (x[5] if pd.notna(x[5]) else -1), reverse=True)
     return rows
@@ -38,7 +40,7 @@ L.append("# 咱们后加的因子 — 夏普率体检报告(全量版)")
 L.append("")
 L.append("> 与因子库 zoo 筛查**同一套口径**：日频前瞻收益(无前视) + RankIC/ICIR + 五分位多空组合夏普(ls_sharpe, 年化 252)。")
 L.append("> 这批因子(自研 `structured_reversal` + 复现的方正金工 / 华泰金工因子)不在注册表 zoo 内, 故单独评估。")
-L.append("> **本轮更新**：① 方正 4 个未跑通因子修复, 16 因子全量体检; ② **新增华泰金工 4 因子复现**。")
+L.append("> **本轮更新**：① 方正 4 个未跑通因子修复, 16 因子全量体检; ② 新增华泰金工 4 因子; ③ **新增国盛/海通金工 3 因子**(量价背离/隔夜收益/非流动性)。")
 L.append("")
 
 # ---- 一、自研 structured_reversal ----
@@ -90,6 +92,22 @@ L.append("- `historical_percentile`(**0.97**)、`money_flow`(**0.49**) 量级较
 L.append("- `idiosyncratic_volatility` 用个股收益对市场收益滚动回归残差标准差(经典低波异象); `downside_deviation` 为半方差下行波动; `money_flow` 为 5m 符号量能累加(大单资金流代理); `historical_percentile` 为收盘价在 60 日历史分布中的分位(均值回复信号)。")
 L.append("- ⚠️ 华泰『理想换手率/一致预期/财务质量』等因子依赖换手率或基本面数据, 沙箱无覆盖, 未复现。")
 L.append("")
+L.append("### 2.3 国盛金工(量价淘金) / 海通金工(流动性)")
+L.append("")
+L.append("> 复现自国盛『量价淘金』系列与海通『选股因子系列』(流动性方向)。ls_sharpe 为库约定。")
+L.append("")
+L.append("| 因子 | 来源 | 状态 | IC | ICIR | 多空夏普 | 盈利能力|ls| | IC方向 |")
+L.append("|---|---|---|---|---|---|---|---|")
+for name, st, ic, icir, ls, prof, dr in fmt_rows(gh, "国盛/海通"):
+    prof_s = "—" if pd.isna(prof) else f"{prof:.2f}"
+    src = "国盛" if name.startswith("overnight") or name.startswith("volume_price") else "海通"
+    L.append(f"| {name} | {src} | {st} | {ic:+.3f} | {icir:+.2f} | {ls:+.2f} | {prof_s} | {dr} |")
+L.append("")
+L.append("- `volume_price_divergence`(**1.41**)、`amihud_illiquidity`(取反 **0.87**)、`overnight_return`(**0.69**) 量级均较好, 其中量价背离为全样本最强新因子。")
+L.append("- ⚠️ `volume_price_divergence` 的 IC 近 0 但五分位多空夏普高达 1.41(极值分组捕捉到非单调的量价关系), 上线前须 walk-forward 验证方向, 谨防过拟合。")
+L.append("- `amihud_illiquidity` 用 volume 代理成交金额(沙箱 5m 无 amount), 非流动性溢价方向以样本为准。")
+L.append("- 国盛『逐笔羊群/异动雷达』、海通『正交大单的大买』等依赖逐笔/amount, 沙箱无覆盖, 未复现。")
+L.append("")
 
 # ---- 三、与 zoo Top 对比 ----
 L.append("## 三、与 zoo Top 因子横向对比")
@@ -104,6 +122,10 @@ for name, st, ic, icir, ls, prof, dr in fmt_rows(fd, "方正"):
 for name, st, ic, icir, ls, prof, dr in fmt_rows(ht, "华泰"):
     if pd.notna(prof) and prof >= 0.8:
         L.append(f"| {name} | 华泰 | {prof:.2f} | 复现 |")
+for name, st, ic, icir, ls, prof, dr in fmt_rows(gh, "国盛/海通"):
+    if pd.notna(prof) and prof >= 0.8:
+        src = "国盛" if name.startswith(("overnight", "volume_price")) else "海通"
+        L.append(f"| {name} | {src} | {prof:.2f} | 复现 |")
 L.append(f"| structured_reversal_v1 | 自研 | −0.67(反转方向) | 自研, 弱 |")
 L.append(f"| structured_reversal_v2 | 自研 | −0.17(反转方向) | 自研『优化版』, 更弱 |")
 L.append("")

@@ -97,6 +97,8 @@ def part_a():
 def part_b():
     from backtest.factors import founder as F
     from backtest.factors import huatai as H
+    from backtest.factors import guosheng as G
+    from backtest.factors import haitong as HA
     start, end = "2025-01-01", "2026-06-30"
     SUB = UNIVERSE[:30]  # 缩小截面以控制单轮耗时(<8min)
     # 5m 取数（单笔可覆盖 1.5 年），带缓存避免重复限流
@@ -153,6 +155,10 @@ def part_b():
         ("HT:downside_deviation", H.downside_deviation_batch, "daily"),
         ("HT:historical_percentile", H.historical_percentile_batch, "daily"),
         ("HT:money_flow", H.money_flow_batch, "minute"),
+        # ── 国盛金工(量价淘金) / 海通金工(流动性) ──
+        ("GS:overnight_return", G.overnight_return_batch, "daily"),
+        ("GS:volume_price_divergence", G.volume_price_divergence_batch, "daily"),
+        ("HA:amihud_illiquidity", HA.amihud_illiquidity_batch, "daily"),
     ]
 
     rows = []
@@ -185,16 +191,22 @@ def part_b():
     cols = ["ic_mean", "icir", "ic_pos", "ic_tstat", "ls_sharpe", "top_sharpe"]
     out = pd.DataFrame({r[0]: r[2] for r in rows}).T[cols]
     out.insert(0, "状态", [r[1] for r in rows])
-    founder_rows = out[~out.index.str.startswith("HT:")]
-    huatai_rows = out[out.index.str.startswith("HT:")]
+    is_ht = out.index.str.startswith("HT:")
+    is_gh = out.index.str.startswith(("GS:", "HA:"))
+    founder_rows = out[~is_ht & ~is_gh]
+    huatai_rows = out[is_ht]
+    gh_rows = out[is_gh]
     print("\n── 方正金工 ──")
     print(founder_rows.round(3).to_string())
-    print("\n── 华泰金工(新复现) ──")
+    print("\n── 华泰金工 ──")
     print(huatai_rows.round(3).to_string())
+    print("\n── 国盛/海通金工(新复现) ──")
+    print(gh_rows.round(3).to_string())
     # 落盘(分开存, 便于报告生成器分别读取)
     founder_rows.round(4).to_csv(Path(__file__).parent / "screen_results" / "custom_founder_eval.csv")
     huatai_rows.round(4).to_csv(Path(__file__).parent / "screen_results" / "custom_huatai_eval.csv")
-    print("\n  已保存 custom_founder_eval.csv / custom_huatai_eval.csv")
+    gh_rows.round(4).to_csv(Path(__file__).parent / "screen_results" / "custom_guosheng_haitong_eval.csv")
+    print("\n  已保存 custom_founder_eval.csv / custom_huatai_eval.csv / custom_guosheng_haitong_eval.csv")
     print("\n  注: smart_money/drip_water_stone 等在 _batch 内对日因子做 rolling(20) 平滑(慢信号);")
     print("  clouds_disperse/rapids_advance 依赖 amount 列(mootdx 5m 无)→未纳入;")
     print("  ls_sharpe 为库约定(做多高因子值)，若 IC<0 则盈利方向为取反(=|ls_sharpe| 量级).")

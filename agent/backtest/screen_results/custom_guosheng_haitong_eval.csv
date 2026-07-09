@@ -1,0 +1,4 @@
+,状态,ic_mean,icir,ic_pos,ic_tstat,ls_sharpe,top_sharpe
+GS:overnight_return,ok,0.0215,1.415,0.563,1.48,0.685,0.126
+GS:volume_price_divergence,ok,0.0026,0.171,0.536,0.16,1.409,0.744
+HA:amihud_illiquidity,ok,-0.0047,-0.35,0.514,-0.37,-0.866,-1.15
