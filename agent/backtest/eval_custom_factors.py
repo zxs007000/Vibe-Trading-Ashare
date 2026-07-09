@@ -96,6 +96,7 @@ def part_a():
 # ============================================================
 def part_b():
     from backtest.factors import founder as F
+    from backtest.factors import huatai as H
     start, end = "2025-01-01", "2026-06-30"
     SUB = UNIVERSE[:30]  # 缩小截面以控制单轮耗时(<8min)
     # 5m 取数（单笔可覆盖 1.5 年），带缓存避免重复限流
@@ -129,7 +130,8 @@ def part_b():
 
     # 方正各因子（除依赖 amount 的两个: clouds_disperse / rapids_advance）
     # kind: 'minute' = _batch(stocks_minute); 'daily' = _batch(daily_bars);
-    #       'single_daily' = 逐股调用单股函数(daily)
+    #       'single_daily' = 逐股调用单股函数(daily); 'panic' = _batch(daily, minute, mkt);
+    #       'daily_mkt' = _batch(daily_bars, market_ret)
     specs = [
         ("drip_water_stone", F.drip_water_stone_batch, "minute"),
         ("smart_money", F.smart_money_batch, "minute"),
@@ -146,6 +148,11 @@ def part_b():
         ("panic_factor", F.panic_factor_batch, "panic"),
         ("synergy_effect", F.synergy_effect_batch, "minute"),
         ("undercurrent", F.undercurrent_batch, "minute"),
+        # ── 华泰金工(新复现) ──
+        ("HT:idiosyncratic_volatility", H.idiosyncratic_volatility_batch, "daily_mkt"),
+        ("HT:downside_deviation", H.downside_deviation_batch, "daily"),
+        ("HT:historical_percentile", H.historical_percentile_batch, "daily"),
+        ("HT:money_flow", H.money_flow_batch, "minute"),
     ]
 
     rows = []
@@ -157,6 +164,8 @@ def part_b():
                 res = fn(daily_bars)
             elif kind == "panic":
                 res = fn(daily_bars, stocks_minute, market_ret)
+            elif kind == "daily_mkt":
+                res = fn(daily_bars, market_ret)
             else:  # single_daily
                 res = {c: fn(b) for c, b in daily_bars.items()}
             fdf = pd.DataFrame({c: s for c, s in res.items() if len(s.dropna()) > 5})
@@ -176,10 +185,16 @@ def part_b():
     cols = ["ic_mean", "icir", "ic_pos", "ic_tstat", "ls_sharpe", "top_sharpe"]
     out = pd.DataFrame({r[0]: r[2] for r in rows}).T[cols]
     out.insert(0, "状态", [r[1] for r in rows])
-    print(out.round(3).to_string())
-    # 落盘
-    out.round(4).to_csv(Path(__file__).parent / "screen_results" / "custom_founder_eval.csv")
-    print("\n  已保存 custom_founder_eval.csv")
+    founder_rows = out[~out.index.str.startswith("HT:")]
+    huatai_rows = out[out.index.str.startswith("HT:")]
+    print("\n── 方正金工 ──")
+    print(founder_rows.round(3).to_string())
+    print("\n── 华泰金工(新复现) ──")
+    print(huatai_rows.round(3).to_string())
+    # 落盘(分开存, 便于报告生成器分别读取)
+    founder_rows.round(4).to_csv(Path(__file__).parent / "screen_results" / "custom_founder_eval.csv")
+    huatai_rows.round(4).to_csv(Path(__file__).parent / "screen_results" / "custom_huatai_eval.csv")
+    print("\n  已保存 custom_founder_eval.csv / custom_huatai_eval.csv")
     print("\n  注: smart_money/drip_water_stone 等在 _batch 内对日因子做 rolling(20) 平滑(慢信号);")
     print("  clouds_disperse/rapids_advance 依赖 amount 列(mootdx 5m 无)→未纳入;")
     print("  ls_sharpe 为库约定(做多高因子值)，若 IC<0 则盈利方向为取反(=|ls_sharpe| 量级).")

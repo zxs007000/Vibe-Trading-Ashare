@@ -1,0 +1,5 @@
+,状态,ic_mean,icir,ic_pos,ic_tstat,ls_sharpe,top_sharpe
+HT:idiosyncratic_volatility,ok,-0.0453,-2.532,0.447,-2.2,0.133,-0.537
+HT:downside_deviation,ok,-0.0384,-1.975,0.422,-1.81,-0.217,-0.285
+HT:historical_percentile,ok,-0.0106,-0.634,0.513,-0.65,0.974,0.147
+HT:money_flow,ok,-0.0214,-1.168,0.446,-1.23,0.491,-0.072
