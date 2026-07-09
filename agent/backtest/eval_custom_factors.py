@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore")  # 屏蔽 equal_treatment 等空切片警告
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-CACHE = Path(__file__).parent / "screen_results" / "_5m_cache_2025h1.pkl"
+CACHE = Path("/workspace/stock_worm/data/ashare_5m_cache.pkl")  # 备份: 全CSI300 3.5y 5m(带amount)
 
 from run_factor_analysis import build_panel, compute_forward_returns, CSI300_SAMPLE
 from backtest.loaders.astockdata_loader import DataLoader

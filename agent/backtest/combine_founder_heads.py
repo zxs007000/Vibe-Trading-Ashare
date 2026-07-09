@@ -24,7 +24,7 @@ from src.factors.factor_analysis_core import compute_ic_series, compute_group_eq
 from backtest.validation import _sharpe
 
 logging.disable(logging.CRITICAL)
-CACHE = Path(__file__).parent / "screen_results" / "_5m_cache_2025h1.pkl"
+CACHE = Path("/workspace/stock_worm/data/ashare_5m_cache.pkl")  # 备份: 全CSI300 3.5y 5m(带amount)
 START, END = "2025-01-01", "2026-06-30"
 
 # 头部因子(来自 eval_custom_factors Part B 排雷: 方向自洽, 可用多空夏普>=0.3)
