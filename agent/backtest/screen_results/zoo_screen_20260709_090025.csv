@@ -1,0 +1,467 @@
+alpha_id,zoo,theme,status,ic_mean,ic_std,icir,ic_pos_ratio,ic_tstat,ls_sharpe,top_sharpe,ls_ann_ret,reason
+academic_carhart_mom,academic,momentum,ok,0.0177,0.2471,1.137,0.54,2.06,0.341,-0.027,0.0713,
+academic_cma,academic,quality,ok,0.0104,0.1784,0.925,0.521,1.81,-0.17,0.027,-0.0259,
+academic_high52w,academic,momentum,ok,0.0267,0.2728,1.555,0.55,2.83,0.778,0.639,0.168,
+academic_hml,academic,value,ok,-0.0153,0.2594,-0.936,0.461,-1.7,-0.453,-0.412,-0.1009,
+academic_illiq,academic,liquidity,ok,-0.0045,0.1465,-0.491,0.486,-1.01,0.33,0.114,0.0425,
+academic_mkt_rf,academic,momentum,ok,0.0005,0.2558,0.032,0.489,0.07,0.667,0.276,0.1421,
+academic_retskew,academic,volatility,ok,0.0238,0.1724,2.193,0.565,4.42,0.247,0.146,0.0339,
+academic_rmw,academic,quality,ok,0.049,0.2653,2.934,0.578,5.91,0.275,0.418,0.0588,
+academic_smb,academic,quality,ok,0.0164,0.172,1.513,0.546,3.05,0.498,0.355,0.0739,
+academic_strev,academic,reversal,ok,-0.0005,0.2558,-0.032,0.511,-0.07,-0.667,-0.398,-0.1421,
+alpha101_001,alpha101,"reversal,volatility",ok,-0.0155,0.1784,-1.38,0.457,-2.83,-0.233,-0.285,-0.0337,
+alpha101_002,alpha101,"volume,reversal",ok,0.0059,0.1415,0.664,0.511,1.37,-0.272,-0.125,-0.032,
+alpha101_003,alpha101,"volume,reversal",ok,0.0033,0.1377,0.378,0.503,0.78,-0.547,-0.165,-0.0679,
+alpha101_004,alpha101,reversal,ok,0.0004,0.1677,0.035,0.5,0.07,-0.412,-0.159,-0.0599,
+alpha101_005,alpha101,reversal,skip,,,,,,,,,alpha101_005: panel missing required columns ['vwap']
+alpha101_006,alpha101,"volume,reversal",ok,0.0096,0.1703,0.895,0.519,1.85,0.377,0.18,0.0527,
+alpha101_007,alpha101,"momentum,volume",ok,-0.0086,0.1541,-0.882,0.453,-1.77,0.631,-0.345,0.0836,
+alpha101_008,alpha101,reversal,ok,0.0129,0.2067,0.991,0.524,2.04,0.455,-0.068,0.0752,
+alpha101_009,alpha101,momentum,ok,0.0219,0.1937,1.791,0.545,3.71,0.872,-0.054,0.1385,
+alpha101_010,alpha101,momentum,ok,0.0202,0.1897,1.688,0.533,3.5,0.684,-0.026,0.1063,
+alpha101_011,alpha101,"volume,reversal",skip,,,,,,,,,alpha101_011: panel missing required columns ['vwap']
+alpha101_012,alpha101,"volume,reversal",ok,0.0134,0.1602,1.324,0.524,2.74,0.058,-0.344,0.0079,
+alpha101_013,alpha101,volume,ok,0.0069,0.1291,0.85,0.513,1.76,-0.151,-0.166,-0.0179,
+alpha101_014,alpha101,"volume,momentum",ok,0.0107,0.1662,1.018,0.545,2.1,0.531,-0.032,0.0729,
+alpha101_015,alpha101,volume,ok,0.0109,0.2761,0.627,0.507,1.29,-0.099,-0.203,-0.0245,
+alpha101_016,alpha101,volume,ok,0.0055,0.1261,0.698,0.52,1.44,-0.303,-0.321,-0.0353,
+alpha101_017,alpha101,"volume,reversal",ok,0.0121,0.1941,0.987,0.549,2.02,0.196,-0.047,0.0314,
+alpha101_018,alpha101,volatility,ok,0.0329,0.1836,2.845,0.57,5.87,0.933,0.099,0.1469,
+alpha101_019,alpha101,momentum,ok,0.0063,0.2113,0.47,0.526,0.85,-0.098,0.162,-0.0172,
+alpha101_020,alpha101,reversal,ok,-0.0088,0.1914,-0.728,0.474,-1.51,-0.449,-0.301,-0.0705,
+alpha101_021,alpha101,"momentum,volatility",ok,-0.0013,0.1599,-0.133,0.48,-0.27,0.451,-0.071,0.0595,
+alpha101_022,alpha101,"volume,volatility",ok,-0.0061,0.1502,-0.64,0.489,-1.32,-0.77,-0.473,-0.0979,
+alpha101_023,alpha101,momentum,ok,0.008,0.1794,0.707,0.51,1.45,0.085,0.015,0.0127,
+alpha101_024,alpha101,momentum,ok,0.0274,0.2063,2.106,0.551,4.36,0.619,0.083,0.1083,
+alpha101_025,alpha101,"momentum,volume",skip,,,,,,,,,alpha101_025: panel missing required columns ['vwap']
+alpha101_026,alpha101,volume,ok,0.0095,0.1577,0.955,0.529,1.97,-0.221,-0.206,-0.0291,
+alpha101_027,alpha101,volume,skip,,,,,,,,,alpha101_027: panel missing required columns ['vwap']
+alpha101_028,alpha101,volume,ok,0.0079,0.1665,0.754,0.514,1.55,1.45,0.337,0.2056,
+alpha101_029,alpha101,"reversal,volume",ok,0.0061,0.2064,0.472,0.519,0.97,-0.274,-0.362,-0.0438,
+alpha101_030,alpha101,"momentum,volume",ok,0.0106,0.1789,0.94,0.544,1.93,0.381,-0.126,0.0564,
+alpha101_031,alpha101,momentum,ok,-0.0038,0.176,-0.342,0.52,-0.7,-0.216,-0.233,-0.0319,
+alpha101_032,alpha101,momentum,skip,,,,,,,,,alpha101_032: panel missing required columns ['vwap']
+alpha101_033,alpha101,reversal,ok,0.0306,0.2185,2.221,0.571,4.6,0.964,0.042,0.1751,
+alpha101_034,alpha101,volatility,ok,0.0134,0.1808,1.178,0.529,2.44,0.476,0.168,0.072,
+alpha101_035,alpha101,"volume,momentum",ok,0.0066,0.1966,0.536,0.515,1.09,-0.364,-0.398,-0.0592,
+alpha101_036,alpha101,"momentum,volume",skip,,,,,,,,,alpha101_036: panel missing required columns ['vwap']
+alpha101_037,alpha101,momentum,ok,0.0166,0.1905,1.38,0.531,2.58,0.32,0.226,0.0495,
+alpha101_038,alpha101,reversal,ok,0.0182,0.2207,1.306,0.544,2.7,0.322,-0.29,0.0592,
+alpha101_039,alpha101,"momentum,volume",ok,-0.0046,0.2278,-0.321,0.495,-0.58,-0.432,-0.314,-0.0765,
+alpha101_040,alpha101,"volatility,volume",ok,0.0255,0.1916,2.108,0.551,4.35,0.409,-0.242,0.0636,
+alpha101_041,alpha101,reversal,skip,,,,,,,,,alpha101_041: panel missing required columns ['vwap']
+alpha101_042,alpha101,reversal,skip,,,,,,,,,alpha101_042: panel missing required columns ['vwap']
+alpha101_043,alpha101,"volume,momentum",ok,-0.0011,0.1782,-0.102,0.487,-0.21,-0.675,-0.2,-0.0954,
+alpha101_044,alpha101,volume,ok,0.0075,0.1422,0.842,0.521,1.74,-0.249,-0.248,-0.0299,
+alpha101_045,alpha101,"momentum,volume",ok,0.0081,0.15,0.861,0.497,1.76,-0.101,-0.44,-0.0132,
+alpha101_046,alpha101,momentum,ok,0.0041,0.1869,0.347,0.508,0.72,-0.173,-0.152,-0.0271,
+alpha101_047,alpha101,"volume,momentum",skip,,,,,,,,,alpha101_047: panel missing required columns ['vwap']
+alpha101_048,alpha101,"momentum,volatility",skip,,,,,,,,,alpha101_048: panel missing sector tag
+alpha101_049,alpha101,momentum,ok,0.0067,0.2007,0.528,0.505,1.09,0.197,-0.449,0.0315,
+alpha101_050,alpha101,volume,skip,,,,,,,,,alpha101_050: panel missing required columns ['vwap']
+alpha101_051,alpha101,momentum,ok,0.0008,0.1982,0.065,0.498,0.13,0.123,-0.422,0.0189,
+alpha101_052,alpha101,momentum,ok,-0.0047,0.2093,-0.359,0.477,-0.66,-0.497,0.004,-0.0855,
+alpha101_053,alpha101,reversal,ok,0.025,0.1972,2.011,0.545,4.15,1.434,0.461,0.2251,
+alpha101_054,alpha101,reversal,ok,0.0354,0.2026,2.777,0.557,5.76,1.859,0.544,0.3037,
+alpha101_055,alpha101,"volume,reversal",ok,0.0024,0.1355,0.282,0.517,0.58,-0.527,-0.345,-0.0617,
+alpha101_056,alpha101,momentum,skip,,,,,,,,,alpha101_056: panel missing sector tag
+alpha101_057,alpha101,reversal,skip,,,,,,,,,alpha101_057: panel missing required columns ['vwap']
+alpha101_058,alpha101,volume,skip,,,,,,,,,alpha101_058: panel missing required columns ['vwap']
+alpha101_059,alpha101,volume,skip,,,,,,,,,alpha101_059: panel missing required columns ['vwap']
+alpha101_060,alpha101,volume,ok,0.0364,0.1966,2.942,0.568,6.07,1.834,0.689,0.2963,
+alpha101_061,alpha101,volume,skip,,,,,,,,,alpha101_061: panel missing required columns ['vwap']
+alpha101_062,alpha101,volume,skip,,,,,,,,,alpha101_062: panel missing required columns ['vwap']
+alpha101_063,alpha101,"volume,momentum",skip,,,,,,,,,alpha101_063: panel missing required columns ['vwap']
+alpha101_064,alpha101,volume,skip,,,,,,,,,alpha101_064: panel missing required columns ['vwap']
+alpha101_065,alpha101,volume,skip,,,,,,,,,alpha101_065: panel missing required columns ['vwap']
+alpha101_066,alpha101,momentum,skip,,,,,,,,,alpha101_066: panel missing required columns ['vwap']
+alpha101_067,alpha101,volume,skip,,,,,,,,,alpha101_067: panel missing required columns ['vwap']
+alpha101_068,alpha101,volume,ok,0.0089,0.1305,1.079,0.513,2.2,1.001,0.54,0.1288,
+alpha101_069,alpha101,volume,skip,,,,,,,,,alpha101_069: panel missing required columns ['vwap']
+alpha101_070,alpha101,"momentum,volume",skip,,,,,,,,,alpha101_070: panel missing required columns ['vwap']
+alpha101_071,alpha101,"volume,reversal",skip,,,,,,,,,alpha101_071: panel missing required columns ['vwap']
+alpha101_072,alpha101,volume,skip,,,,,,,,,alpha101_072: panel missing required columns ['vwap']
+alpha101_073,alpha101,volume,skip,,,,,,,,,alpha101_073: panel missing required columns ['vwap']
+alpha101_074,alpha101,volume,skip,,,,,,,,,alpha101_074: panel missing required columns ['vwap']
+alpha101_075,alpha101,volume,skip,,,,,,,,,alpha101_075: panel missing required columns ['vwap']
+alpha101_076,alpha101,volume,skip,,,,,,,,,alpha101_076: panel missing required columns ['vwap']
+alpha101_077,alpha101,volume,skip,,,,,,,,,alpha101_077: panel missing required columns ['vwap']
+alpha101_078,alpha101,volume,skip,,,,,,,,,alpha101_078: panel missing required columns ['vwap']
+alpha101_079,alpha101,"volume,momentum",skip,,,,,,,,,alpha101_079: panel missing required columns ['vwap']
+alpha101_080,alpha101,"momentum,volume",skip,,,,,,,,,alpha101_080: panel missing sector tag
+alpha101_081,alpha101,volume,skip,,,,,,,,,alpha101_081: panel missing required columns ['vwap']
+alpha101_082,alpha101,volume,skip,,,,,,,,,alpha101_082: panel missing sector tag
+alpha101_083,alpha101,"volume,volatility",skip,,,,,,,,,alpha101_083: panel missing required columns ['vwap']
+alpha101_084,alpha101,momentum,skip,,,,,,,,,alpha101_084: panel missing required columns ['vwap']
+alpha101_085,alpha101,volume,ok,-0.011,0.1664,-1.048,0.477,-2.13,0.408,0.276,0.0564,
+alpha101_086,alpha101,volume,skip,,,,,,,,,alpha101_086: panel missing required columns ['vwap']
+alpha101_087,alpha101,momentum,skip,,,,,,,,,alpha101_087: panel missing required columns ['vwap']
+alpha101_088,alpha101,volume,ok,0.0117,0.1495,1.241,0.529,2.56,-0.387,0.05,-0.0521,
+alpha101_089,alpha101,"volume,momentum",skip,,,,,,,,,alpha101_089: panel missing required columns ['vwap']
+alpha101_090,alpha101,volume,skip,,,,,,,,,alpha101_090: panel missing sector tag
+alpha101_091,alpha101,volume,skip,,,,,,,,,alpha101_091: panel missing required columns ['vwap']
+alpha101_092,alpha101,volume,ok,0.0002,0.147,0.017,0.506,0.04,-0.258,-0.019,-0.0329,
+alpha101_093,alpha101,volume,skip,,,,,,,,,alpha101_093: panel missing required columns ['vwap']
+alpha101_094,alpha101,volume,skip,,,,,,,,,alpha101_094: panel missing required columns ['vwap']
+alpha101_095,alpha101,volume,ok,0.007,0.1531,0.721,0.521,1.44,0.744,0.083,0.1052,
+alpha101_096,alpha101,volume,skip,,,,,,,,,alpha101_096: panel missing required columns ['vwap']
+alpha101_097,alpha101,volume,skip,,,,,,,,,alpha101_097: panel missing required columns ['vwap']
+alpha101_098,alpha101,volume,skip,,,,,,,,,alpha101_098: panel missing required columns ['vwap']
+alpha101_099,alpha101,volume,ok,-0.0042,0.1451,-0.456,0.475,-0.91,0.483,0.159,0.0623,
+alpha101_100,alpha101,"volume,momentum",skip,,,,,,,,,alpha101_100: panel missing sector tag
+alpha101_101,alpha101,reversal,ok,-0.0273,0.2122,-2.046,0.444,-4.24,-0.744,-0.698,-0.128,
+dragon_tiger,sentiment,sentiment,no_ic,,,,,,,,,IC 序列为空
+fundamental_quality_accrual,fundamental,quality,skip,,,,,,,,,fundamental_quality_accrual: panel missing extras ['accruals']
+fundamental_quality_roe,fundamental,quality,skip,,,,,,,,,fundamental_quality_roe: panel missing extras ['roe']
+fundamental_quality_roe_change,fundamental,quality,skip,,,,,,,,,fundamental_quality_roe_change: panel missing extras ['roe']
+fundamental_quality_roe_pct,fundamental,quality,skip,,,,,,,,,fundamental_quality_roe_pct: panel missing extras ['roe']
+fundamental_value_pb_inv,fundamental,value,skip,,,,,,,,,fundamental_value_pb_inv: panel missing extras ['bvps']
+gtja191_001,gtja191,"volume,reversal",ok,0.0048,0.1514,0.506,0.513,1.05,-0.13,-0.202,-0.0168,
+gtja191_002,gtja191,"reversal,microstructure",ok,0.0265,0.2014,2.088,0.559,4.33,0.889,0.239,0.1521,
+gtja191_003,gtja191,momentum,ok,-0.0114,0.2092,-0.866,0.465,-1.79,-0.524,-0.721,-0.0916,
+gtja191_004,gtja191,"momentum,volume",ok,-0.0013,0.1599,-0.133,0.48,-0.27,0.451,-0.071,0.0595,
+gtja191_005,gtja191,volume,ok,0.0095,0.1577,0.955,0.529,1.97,-0.221,-0.206,-0.0291,
+gtja191_006,gtja191,reversal,ok,0.0027,0.1981,0.22,0.498,0.45,0.439,0.108,0.0647,
+gtja191_007,gtja191,"volume,microstructure",skip,,,,,,,,,gtja191_007: panel missing required columns ['amount']
+gtja191_008,gtja191,reversal,skip,,,,,,,,,gtja191_008: panel missing required columns ['amount']
+gtja191_009,gtja191,"volume,microstructure",ok,-0.0009,0.2136,-0.068,0.509,-0.14,0.12,-0.43,0.0198,
+gtja191_010,gtja191,"volatility,reversal",ok,-0.0279,0.206,-2.15,0.453,-4.41,-0.906,-0.483,-0.1427,
+gtja191_011,gtja191,"volume,microstructure",ok,-0.0119,0.2091,-0.901,0.489,-1.86,-0.571,-0.261,-0.095,
+gtja191_012,gtja191,"reversal,microstructure",skip,,,,,,,,,gtja191_012: panel missing required columns ['amount']
+gtja191_013,gtja191,microstructure,skip,,,,,,,,,gtja191_013: panel missing required columns ['amount']
+gtja191_014,gtja191,momentum,ok,-0.0066,0.2195,-0.477,0.5,-0.99,0.036,-0.414,0.0065,
+gtja191_015,gtja191,reversal,ok,0.0051,0.1841,0.438,0.522,0.91,0.426,0.282,0.0702,
+gtja191_016,gtja191,"volume,microstructure",skip,,,,,,,,,gtja191_016: panel missing required columns ['amount']
+gtja191_017,gtja191,reversal,skip,,,,,,,,,gtja191_017: panel missing required columns ['amount']
+gtja191_018,gtja191,momentum,ok,-0.0102,0.2346,-0.692,0.493,-1.43,0.191,-0.213,0.0375,
+gtja191_019,gtja191,reversal,ok,-0.0102,0.2346,-0.692,0.493,-1.43,0.18,-0.211,0.0354,
+gtja191_020,gtja191,momentum,ok,-0.0108,0.2327,-0.735,0.494,-1.52,-0.028,-0.178,-0.0054,
+gtja191_021,gtja191,momentum,ok,0.0057,0.2305,0.39,0.509,0.8,0.515,-0.198,0.0944,
+gtja191_022,gtja191,reversal,ok,-0.0085,0.2192,-0.618,0.495,-1.28,0.206,-0.085,0.038,
+gtja191_023,gtja191,volatility,ok,-0.0052,0.1953,-0.422,0.498,-0.87,-0.334,-0.087,-0.0566,
+gtja191_024,gtja191,momentum,ok,0.0038,0.2392,0.25,0.505,0.52,0.443,-0.126,0.0847,
+gtja191_025,gtja191,"momentum,volume",ok,-0.0006,0.2288,-0.044,0.507,-0.09,-0.191,-0.296,-0.0353,
+gtja191_026,gtja191,"momentum,microstructure",skip,,,,,,,,,gtja191_026: panel missing required columns ['amount']
+gtja191_027,gtja191,momentum,ok,0.0032,0.2415,0.207,0.502,0.43,0.46,0.273,0.0909,
+gtja191_028,gtja191,momentum,ok,-0.0007,0.2249,-0.053,0.498,-0.11,0.401,-0.015,0.0707,
+gtja191_029,gtja191,"momentum,volume",ok,-0.0134,0.2218,-0.958,0.487,-1.98,-0.252,-0.169,-0.0451,
+gtja191_030,gtja191,volatility,ok,-0.0381,0.2431,-2.486,0.431,-5.11,0.095,0.087,0.0193,
+gtja191_031,gtja191,reversal,ok,-0.0081,0.2439,-0.526,0.494,-1.09,0.288,-0.104,0.0588,
+gtja191_032,gtja191,volume,ok,0.0109,0.2761,0.627,0.507,1.29,-0.099,-0.203,-0.0245,
+gtja191_033,gtja191,"momentum,volume",ok,-0.004,0.206,-0.308,0.505,-0.63,-0.473,-0.406,-0.0817,
+gtja191_034,gtja191,reversal,ok,0.0081,0.2439,0.526,0.506,1.09,-0.288,-0.377,-0.0588,
+gtja191_035,gtja191,volume,ok,-0.0067,0.2065,-0.518,0.495,-1.06,-0.404,-0.206,-0.0689,
+gtja191_036,gtja191,volume,skip,,,,,,,,,gtja191_036: panel missing required columns ['amount']
+gtja191_037,gtja191,momentum,ok,0.0129,0.2067,0.991,0.524,2.04,0.455,-0.068,0.0752,
+gtja191_038,gtja191,reversal,ok,0.008,0.1794,0.707,0.51,1.45,0.085,0.015,0.0127,
+gtja191_039,gtja191,volume,skip,,,,,,,,,gtja191_039: panel missing required columns ['amount']
+gtja191_040,gtja191,volume,ok,-0.0102,0.2094,-0.776,0.491,-1.59,0.412,0.185,0.0746,
+gtja191_041,gtja191,microstructure,skip,,,,,,,,,gtja191_041: panel missing required columns ['amount']
+gtja191_042,gtja191,"volume,volatility",ok,0.0255,0.1916,2.108,0.551,4.35,0.409,-0.242,0.0636,
+gtja191_043,gtja191,"volume,momentum",ok,-0.0154,0.1979,-1.232,0.479,-2.55,-0.609,-0.224,-0.0974,
+gtja191_044,gtja191,volume,skip,,,,,,,,,gtja191_044: panel missing required columns ['amount']
+gtja191_045,gtja191,volume,skip,,,,,,,,,gtja191_045: panel missing required columns ['amount']
+gtja191_046,gtja191,reversal,ok,0.01,0.2485,0.638,0.523,1.31,-0.068,-0.261,-0.0142,
+gtja191_047,gtja191,reversal,ok,-0.0096,0.2505,-0.608,0.483,-1.26,-0.86,-0.468,-0.1712,
+gtja191_048,gtja191,"volume,momentum",ok,0.0165,0.1903,1.374,0.528,2.82,0.397,0.037,0.0652,
+gtja191_049,gtja191,reversal,ok,-0.0018,0.2335,-0.122,0.501,-0.25,-0.684,-0.466,-0.128,
+gtja191_050,gtja191,reversal,ok,0.0018,0.2335,0.121,0.499,0.25,0.672,0.182,0.126,
+gtja191_051,gtja191,reversal,ok,0.0018,0.2335,0.121,0.499,0.25,0.672,0.18,0.126,
+gtja191_052,gtja191,microstructure,ok,0.0008,0.25,0.05,0.509,0.1,0.653,0.267,0.135,
+gtja191_053,gtja191,momentum,ok,-0.0053,0.1967,-0.425,0.491,-0.88,0.009,-0.058,0.0015,
+gtja191_054,gtja191,"volatility,microstructure",ok,0.0324,0.185,2.777,0.569,5.73,0.944,-0.029,0.148,
+gtja191_055,gtja191,microstructure,ok,-0.0062,0.2276,-0.434,0.498,-0.89,0.665,0.07,0.1244,
+gtja191_056,gtja191,volume,ok,0.0072,0.162,0.702,0.526,1.41,0.785,0.288,0.1129,
+gtja191_057,gtja191,momentum,ok,0.0049,0.2382,0.326,0.5,0.67,0.823,0.265,0.1591,
+gtja191_058,gtja191,momentum,ok,-0.0033,0.2019,-0.256,0.505,-0.53,0.139,0.063,0.0238,
+gtja191_059,gtja191,momentum,ok,0.0002,0.2309,0.016,0.504,0.03,0.183,-0.174,0.0344,
+gtja191_060,gtja191,"volume,microstructure",ok,-0.0047,0.2114,-0.354,0.492,-0.73,0.116,0.225,0.0193,
+gtja191_061,gtja191,volume,skip,,,,,,,,,gtja191_061: panel missing required columns ['amount']
+gtja191_062,gtja191,volume,ok,0.0075,0.1422,0.842,0.521,1.74,-0.249,-0.248,-0.0299,
+gtja191_063,gtja191,momentum,ok,-0.0067,0.2403,-0.443,0.487,-0.92,0.361,-0.061,0.0705,
+gtja191_064,gtja191,volume,skip,,,,,,,,,gtja191_064: panel missing required columns ['amount']
+gtja191_065,gtja191,reversal,ok,0.0145,0.2342,0.982,0.518,2.03,-0.292,-0.501,-0.0571,
+gtja191_066,gtja191,reversal,ok,-0.0145,0.2342,-0.982,0.482,-2.03,0.292,-0.234,0.0571,
+gtja191_067,gtja191,momentum,ok,-0.001,0.2588,-0.06,0.502,-0.12,0.396,0.097,0.0849,
+gtja191_068,gtja191,volume,ok,0.0035,0.2228,0.246,0.504,0.51,0.259,-0.341,0.0452,
+gtja191_069,gtja191,microstructure,ok,-0.003,0.2231,-0.21,0.507,-0.43,0.609,0.249,0.1161,
+gtja191_070,gtja191,"volatility,volume",skip,,,,,,,,,gtja191_070: panel missing required columns ['amount']
+gtja191_071,gtja191,reversal,ok,-0.0034,0.2548,-0.209,0.494,-0.43,0.598,0.08,0.1288,
+gtja191_072,gtja191,reversal,ok,-0.0106,0.2593,-0.65,0.473,-1.34,-0.621,-0.334,-0.129,
+gtja191_073,gtja191,volume,skip,,,,,,,,,gtja191_073: panel missing required columns ['amount']
+gtja191_074,gtja191,volume,skip,,,,,,,,,gtja191_074: panel missing required columns ['amount']
+gtja191_075,gtja191,"sentiment,momentum",ok,0.0016,0.23,0.11,0.505,0.23,0.118,-0.066,0.0219,
+gtja191_076,gtja191,"volatility,volume",ok,0.0112,0.1384,1.281,0.543,2.63,0.622,0.177,0.0711,
+gtja191_077,gtja191,volume,skip,,,,,,,,,gtja191_077: panel missing required columns ['amount']
+gtja191_078,gtja191,reversal,ok,0.0017,0.2302,0.118,0.506,0.24,0.876,0.228,0.163,
+gtja191_079,gtja191,momentum,ok,-0.0023,0.251,-0.144,0.497,-0.3,0.398,-0.056,0.0813,
+gtja191_080,gtja191,volume,ok,-0.0166,0.1666,-1.585,0.462,-3.28,-0.728,-0.437,-0.1032,
+gtja191_081,gtja191,volume,ok,0.0125,0.1971,1.008,0.538,2.09,0.595,0.119,0.0994,
+gtja191_082,gtja191,reversal,ok,-0.0114,0.2638,-0.687,0.472,-1.42,-0.441,-0.21,-0.0929,
+gtja191_083,gtja191,volume,ok,0.0055,0.1261,0.698,0.52,1.44,-0.303,-0.321,-0.0353,
+gtja191_084,gtja191,"volume,momentum",ok,-0.01,0.2048,-0.775,0.489,-1.59,0.161,0.135,0.0273,
+gtja191_085,gtja191,"volume,momentum",ok,-0.0011,0.1782,-0.102,0.487,-0.21,-0.675,-0.2,-0.0954,
+gtja191_086,gtja191,momentum,ok,0.0041,0.1869,0.347,0.508,0.72,-0.173,-0.152,-0.0271,
+gtja191_087,gtja191,microstructure,skip,,,,,,,,,gtja191_087: panel missing required columns ['amount']
+gtja191_088,gtja191,momentum,ok,-0.0003,0.2535,-0.017,0.497,-0.03,0.498,0.112,0.1056,
+gtja191_089,gtja191,momentum,ok,0.0005,0.2171,0.034,0.491,0.07,0.406,-0.165,0.0706,
+gtja191_090,gtja191,volume,skip,,,,,,,,,gtja191_090: panel missing required columns ['amount']
+gtja191_091,gtja191,"volume,reversal",ok,-0.0005,0.1887,-0.043,0.5,-0.09,-0.333,-0.449,-0.0528,
+gtja191_092,gtja191,volume,skip,,,,,,,,,gtja191_092: panel missing required columns ['amount']
+gtja191_093,gtja191,microstructure,ok,-0.0326,0.2442,-2.122,0.427,-4.36,-0.885,-0.502,-0.1624,
+gtja191_094,gtja191,"volume,momentum",ok,-0.0075,0.2049,-0.58,0.491,-1.19,0.126,0.13,0.0219,
+gtja191_095,gtja191,"volatility,volume",skip,,,,,,,,,gtja191_095: panel missing required columns ['amount']
+gtja191_096,gtja191,momentum,ok,0.0093,0.2401,0.616,0.517,1.27,1.04,0.448,0.1993,
+gtja191_097,gtja191,"volatility,volume",ok,0.0065,0.1905,0.542,0.509,1.12,0.676,0.103,0.107,
+gtja191_098,gtja191,reversal,ok,0.0154,0.1987,1.229,0.533,2.54,-0.031,-0.325,-0.0052,
+gtja191_099,gtja191,volume,ok,0.0069,0.1291,0.85,0.513,1.76,-0.151,-0.166,-0.0179,
+gtja191_100,gtja191,"volatility,volume",ok,0.0089,0.1906,0.74,0.518,1.52,0.781,0.164,0.1243,
+gtja191_101,gtja191,"volume,momentum",skip,,,,,,,,,gtja191_101: panel missing required columns ['amount']
+gtja191_102,gtja191,volume,ok,-0.0136,0.1657,-1.306,0.46,-2.71,-0.578,-0.228,-0.0827,
+gtja191_103,gtja191,reversal,ok,0.0059,0.2085,0.449,0.514,0.92,1.054,0.428,0.1802,
+gtja191_104,gtja191,"volume,volatility",ok,-0.0061,0.1502,-0.64,0.489,-1.32,-0.77,-0.473,-0.0979,
+gtja191_105,gtja191,volume,ok,0.0033,0.1377,0.378,0.503,0.78,-0.547,-0.165,-0.0679,
+gtja191_106,gtja191,momentum,ok,0.0036,0.2419,0.237,0.501,0.49,0.383,-0.111,0.0742,
+gtja191_107,gtja191,reversal,ok,-0.0088,0.1914,-0.728,0.474,-1.51,-0.449,-0.301,-0.0705,
+gtja191_108,gtja191,"reversal,volume",skip,,,,,,,,,gtja191_108: panel missing required columns ['amount']
+gtja191_109,gtja191,volatility,ok,-0.0101,0.1812,-0.884,0.464,-1.83,0.161,-0.08,0.0248,
+gtja191_110,gtja191,momentum,ok,-0.0028,0.2247,-0.198,0.49,-0.41,0.687,0.286,0.1313,
+gtja191_111,gtja191,"volume,microstructure",ok,0.0316,0.1964,2.557,0.567,5.3,1.398,0.38,0.2264,
+gtja191_112,gtja191,momentum,ok,0.0015,0.2372,0.102,0.493,0.21,0.753,0.245,0.1448,
+gtja191_113,gtja191,volume,ok,0.0081,0.15,0.861,0.497,1.76,-0.101,-0.44,-0.0132,
+gtja191_114,gtja191,"volume,volatility",skip,,,,,,,,,gtja191_114: panel missing required columns ['amount']
+gtja191_115,gtja191,volume,ok,-0.0045,0.153,-0.471,0.5,-0.96,-0.209,-0.199,-0.0269,
+gtja191_116,gtja191,momentum,ok,0.0055,0.24,0.362,0.51,0.74,0.502,0.038,0.0947,
+gtja191_117,gtja191,"volume,momentum",ok,0.0066,0.1966,0.535,0.515,1.09,-0.366,-0.403,-0.0596,
+gtja191_118,gtja191,reversal,ok,-0.0059,0.2219,-0.424,0.483,-0.87,0.766,0.314,0.1452,
+gtja191_119,gtja191,volume,skip,,,,,,,,,gtja191_119: panel missing required columns ['amount']
+gtja191_120,gtja191,reversal,skip,,,,,,,,,gtja191_120: panel missing required columns ['amount']
+gtja191_121,gtja191,volume,skip,,,,,,,,,gtja191_121: panel missing required columns ['amount']
+gtja191_122,gtja191,momentum,ok,0.0011,0.2523,0.067,0.5,0.14,0.609,0.355,0.1282,
+gtja191_123,gtja191,volume,ok,-0.0042,0.1451,-0.456,0.475,-0.91,0.483,0.159,0.0623,
+gtja191_124,gtja191,reversal,skip,,,,,,,,,gtja191_124: panel missing required columns ['amount']
+gtja191_125,gtja191,volume,skip,,,,,,,,,gtja191_125: panel missing required columns ['amount']
+gtja191_126,gtja191,reversal,ok,-0.0276,0.2181,-2.007,0.455,-4.16,-0.987,-0.541,-0.1645,
+gtja191_127,gtja191,volatility,ok,-0.0282,0.251,-1.786,0.455,-3.67,-0.366,-0.164,-0.0714,
+gtja191_128,gtja191,momentum,ok,-0.0008,0.2221,-0.059,0.49,-0.12,0.667,0.328,0.1195,
+gtja191_129,gtja191,momentum,ok,-0.0381,0.2452,-2.466,0.421,-5.09,-0.956,-0.575,-0.1782,
+gtja191_130,gtja191,volume,skip,,,,,,,,,gtja191_130: panel missing required columns ['amount']
+gtja191_131,gtja191,volume,skip,,,,,,,,,gtja191_131: panel missing required columns ['amount']
+gtja191_132,gtja191,liquidity,skip,,,,,,,,,gtja191_132: panel missing required columns ['amount']
+gtja191_133,gtja191,momentum,ok,0.0001,0.2244,0.004,0.492,0.01,-0.528,-0.181,-0.0952,
+gtja191_134,gtja191,"momentum,volume",ok,-0.0015,0.2266,-0.108,0.501,-0.22,0.611,0.229,0.1123,
+gtja191_135,gtja191,momentum,ok,-0.0002,0.27,-0.014,0.494,-0.03,-0.273,-0.172,-0.0611,
+gtja191_136,gtja191,"momentum,volume",ok,0.0107,0.1662,1.018,0.545,2.1,0.531,-0.032,0.0729,
+gtja191_137,gtja191,volatility,ok,-0.0229,0.2143,-1.7,0.46,-3.52,-0.347,-0.511,-0.0612,
+gtja191_138,gtja191,volume,skip,,,,,,,,,gtja191_138: panel missing required columns ['amount']
+gtja191_139,gtja191,volume,ok,0.0096,0.1703,0.895,0.519,1.85,0.377,0.18,0.0527,
+gtja191_140,gtja191,volume,ok,0.0087,0.1849,0.745,0.53,1.47,-0.382,0.097,-0.0594,
+gtja191_141,gtja191,volume,ok,-0.0016,0.1435,-0.173,0.487,-0.35,-0.602,-0.165,-0.0772,
+gtja191_142,gtja191,"volume,reversal",ok,0.0121,0.1941,0.987,0.549,2.02,0.196,-0.047,0.0314,
+gtja191_143,gtja191,momentum,ok,-0.0494,0.2539,-3.089,0.42,-6.4,-0.448,-0.237,-0.0953,
+gtja191_144,gtja191,liquidity,skip,,,,,,,,,gtja191_144: panel missing required columns ['amount']
+gtja191_145,gtja191,volume,ok,-0.0123,0.1762,-1.105,0.456,-2.26,0.159,0.017,0.0235,
+gtja191_146,gtja191,momentum,ok,-0.0011,0.1708,-0.104,0.484,-0.21,-0.283,-0.004,-0.042,
+gtja191_147,gtja191,momentum,ok,0.0072,0.2382,0.483,0.522,0.99,0.521,0.101,0.097,
+gtja191_148,gtja191,volume,ok,0.0051,0.1596,0.503,0.508,1.01,0.437,0.069,0.0649,
+gtja191_149,gtja191,momentum,ok,-0.0204,0.2581,-1.254,0.459,-2.57,-0.066,-0.038,-0.0137,
+gtja191_150,gtja191,volume,ok,-0.0247,0.1679,-2.341,0.436,-4.85,-0.844,-0.503,-0.1289,
+gtja191_151,gtja191,momentum,ok,0.0042,0.2592,0.259,0.5,0.53,0.077,-0.184,0.0161,
+gtja191_152,gtja191,momentum,ok,0.0006,0.2219,0.041,0.48,0.08,0.25,0.108,0.0449,
+gtja191_153,gtja191,momentum,ok,-0.026,0.2184,-1.888,0.451,-3.87,-0.924,-0.495,-0.1544,
+gtja191_154,gtja191,volume,skip,,,,,,,,,gtja191_154: panel missing required columns ['amount']
+gtja191_155,gtja191,volume,ok,-0.0151,0.1651,-1.449,0.47,-3.0,-0.925,-0.366,-0.1254,
+gtja191_156,gtja191,volume,skip,,,,,,,,,gtja191_156: panel missing required columns ['amount']
+gtja191_157,gtja191,volume,ok,0.0061,0.2064,0.466,0.521,0.96,-0.293,-0.373,-0.0469,
+gtja191_158,gtja191,volatility,ok,-0.0416,0.2021,-3.27,0.404,-6.78,-0.289,-0.307,-0.0517,
+gtja191_159,gtja191,momentum,ok,-0.0523,0.2413,-3.439,0.397,-7.05,-0.006,0.125,-0.0012,
+gtja191_160,gtja191,volatility,ok,-0.0351,0.2488,-2.239,0.423,-4.6,-0.665,-0.417,-0.1251,
+gtja191_161,gtja191,volatility,ok,-0.039,0.2337,-2.652,0.428,-5.47,-0.909,-0.476,-0.1645,
+gtja191_162,gtja191,momentum,ok,-0.0078,0.2146,-0.577,0.481,-1.19,0.104,-0.33,0.0172,
+gtja191_163,gtja191,volume,skip,,,,,,,,,gtja191_163: panel missing required columns ['amount']
+gtja191_164,gtja191,momentum,ok,0.0351,0.2287,2.439,0.576,5.03,0.675,0.233,0.1224,
+gtja191_165,gtja191,volatility,ok,-0.0072,0.1542,-0.742,0.473,-1.43,-1.122,-0.201,-0.14,
+gtja191_166,gtja191,volatility,ok,-0.0063,0.1896,-0.53,0.476,-1.08,-0.744,-0.343,-0.1005,
+gtja191_167,gtja191,momentum,ok,-0.0387,0.2203,-2.788,0.442,-5.75,-0.761,-0.394,-0.1316,
+gtja191_168,gtja191,volume,ok,0.0146,0.169,1.367,0.541,2.81,0.17,0.003,0.0243,
+gtja191_169,gtja191,momentum,ok,0.0054,0.2125,0.406,0.496,0.83,0.925,0.205,0.1559,
+gtja191_170,gtja191,volume,skip,,,,,,,,,gtja191_170: panel missing required columns ['amount']
+gtja191_171,gtja191,microstructure,ok,0.0387,0.2047,3.001,0.57,6.22,1.86,0.456,0.309,
+gtja191_172,gtja191,momentum,ok,0.0062,0.1611,0.607,0.513,1.25,0.635,0.142,0.0841,
+gtja191_173,gtja191,momentum,ok,-0.0277,0.2174,-2.02,0.456,-4.19,-0.987,-0.536,-0.1645,
+gtja191_174,gtja191,volatility,ok,-0.036,0.2334,-2.451,0.432,-5.04,-1.014,-0.521,-0.1807,
+gtja191_175,gtja191,volatility,ok,-0.0401,0.2328,-2.733,0.427,-5.65,-0.756,-0.4,-0.1352,
+gtja191_176,gtja191,volume,ok,-0.0024,0.1355,-0.282,0.483,-0.58,0.523,-0.029,0.061,
+gtja191_177,gtja191,momentum,ok,0.0053,0.2109,0.402,0.5,0.83,-0.208,0.118,-0.0354,
+gtja191_178,gtja191,"momentum,volume",ok,-0.0322,0.2089,-2.446,0.433,-5.07,-1.241,-0.706,-0.2158,
+gtja191_179,gtja191,volume,skip,,,,,,,,,gtja191_179: panel missing required columns ['amount']
+gtja191_180,gtja191,"volume,reversal",ok,-0.0145,0.1646,-1.402,0.449,-2.82,-0.902,-0.311,-0.1224,
+gtja191_181,gtja191,volatility,ok,0.0014,0.2226,0.102,0.491,0.21,0.853,0.457,0.1594,
+gtja191_182,gtja191,momentum,ok,-0.0125,0.2299,-0.862,0.461,-1.77,0.094,-0.095,0.017,
+gtja191_183,gtja191,volatility,ok,-0.0037,0.1657,-0.352,0.492,-0.71,-0.309,-0.078,-0.0409,
+gtja191_184,gtja191,reversal,ok,0.0166,0.1905,1.38,0.531,2.58,0.32,0.226,0.0495,
+gtja191_185,gtja191,reversal,ok,0.0173,0.177,1.555,0.541,3.22,0.135,-0.151,0.0206,
+gtja191_186,gtja191,momentum,ok,0.012,0.1579,1.206,0.536,2.47,1.164,0.223,0.1566,
+gtja191_187,gtja191,reversal,ok,-0.0368,0.2234,-2.616,0.429,-5.37,-0.603,-0.374,-0.1055,
+gtja191_188,gtja191,volatility,ok,-0.0028,0.168,-0.267,0.493,-0.55,-0.129,-0.374,-0.0186,
+gtja191_189,gtja191,volatility,ok,-0.0382,0.2278,-2.662,0.421,-5.49,-0.602,-0.325,-0.106,
+gtja191_190,gtja191,momentum,ok,0.0122,0.1689,1.146,0.534,2.33,-0.52,-0.2,-0.0734,
+gtja191_191,gtja191,volume,ok,0.0079,0.1665,0.754,0.514,1.55,1.45,0.337,0.2056,
+qlib158_beta10,qlib158,momentum,ok,-0.0041,0.2464,-0.267,0.492,-0.55,0.495,0.069,0.1004,
+qlib158_beta20,qlib158,momentum,ok,-0.0003,0.2535,-0.017,0.497,-0.03,0.498,0.112,0.1056,
+qlib158_beta30,qlib158,momentum,ok,0.0001,0.2652,0.006,0.502,0.01,0.373,0.124,0.0825,
+qlib158_beta5,qlib158,momentum,ok,-0.0102,0.2346,-0.692,0.493,-1.43,0.195,-0.212,0.0383,
+qlib158_beta60,qlib158,momentum,ok,-0.0015,0.2628,-0.094,0.504,-0.19,0.154,0.255,0.0341,
+qlib158_cntd10,qlib158,reversal,ok,-0.0006,0.2025,-0.044,0.493,-0.09,0.288,0.109,0.0481,
+qlib158_cntd20,qlib158,reversal,ok,0.0032,0.2149,0.239,0.532,0.49,0.179,0.033,0.0319,
+qlib158_cntd30,qlib158,reversal,ok,0.0057,0.2238,0.403,0.532,0.82,0.056,0.031,0.0107,
+qlib158_cntd5,qlib158,reversal,ok,-0.0089,0.1936,-0.727,0.475,-1.5,-0.011,-0.113,-0.0019,
+qlib158_cntd60,qlib158,reversal,ok,0.0084,0.2321,0.571,0.529,1.15,-0.325,-0.106,-0.0627,
+qlib158_cntn10,qlib158,reversal,ok,-0.0037,0.206,-0.286,0.495,-0.59,0.017,0.074,0.0028,
+qlib158_cntn20,qlib158,reversal,ok,-0.0083,0.2196,-0.6,0.468,-1.23,-0.156,-0.129,-0.0277,
+qlib158_cntn30,qlib158,reversal,ok,-0.0116,0.2298,-0.802,0.462,-1.64,0.023,0.065,0.0043,
+qlib158_cntn5,qlib158,reversal,ok,0.0054,0.1951,0.443,0.513,0.92,0.2,-0.095,0.0311,
+qlib158_cntn60,qlib158,reversal,ok,-0.0148,0.2388,-0.985,0.471,-1.99,0.142,0.086,0.0276,
+qlib158_cntp10,qlib158,reversal,ok,-0.0056,0.1946,-0.458,0.485,-0.95,0.233,0.088,0.0382,
+qlib158_cntp20,qlib158,reversal,ok,-0.0033,0.2019,-0.256,0.505,-0.53,0.139,0.063,0.0238,
+qlib158_cntp30,qlib158,reversal,ok,-0.0022,0.2086,-0.164,0.516,-0.34,-0.1,-0.046,-0.0179,
+qlib158_cntp5,qlib158,reversal,ok,-0.0129,0.1881,-1.09,0.473,-2.25,0.041,-0.07,0.0066,
+qlib158_cntp60,qlib158,reversal,ok,-0.0008,0.2111,-0.062,0.503,-0.13,-0.617,-0.237,-0.1082,
+qlib158_cord10,qlib158,"volume,microstructure",ok,-0.0156,0.1873,-1.322,0.464,-2.73,0.011,-0.248,0.0017,
+qlib158_cord20,qlib158,"volume,microstructure",ok,-0.0221,0.1887,-1.863,0.44,-3.83,-0.18,-0.182,-0.0279,
+qlib158_cord30,qlib158,"volume,microstructure",ok,-0.024,0.1887,-2.021,0.426,-4.13,-0.164,-0.063,-0.0255,
+qlib158_cord5,qlib158,"volume,microstructure",ok,-0.0118,0.1825,-1.027,0.476,-2.12,0.366,-0.035,0.0549,
+qlib158_cord60,qlib158,"volume,microstructure",ok,-0.0299,0.1889,-2.51,0.43,-5.06,-0.071,0.113,-0.0114,
+qlib158_corr10,qlib158,"volume,microstructure",ok,-0.0134,0.178,-1.193,0.47,-2.46,0.254,-0.053,0.0367,
+qlib158_corr20,qlib158,"volume,microstructure",ok,-0.012,0.1951,-0.98,0.477,-2.01,0.142,-0.032,0.0229,
+qlib158_corr30,qlib158,"volume,microstructure",ok,-0.01,0.1992,-0.796,0.467,-1.63,0.298,0.095,0.0494,
+qlib158_corr5,qlib158,"volume,microstructure",ok,-0.0033,0.1669,-0.311,0.498,-0.64,0.687,0.042,0.0966,
+qlib158_corr60,qlib158,"volume,microstructure",ok,-0.002,0.2171,-0.145,0.501,-0.29,0.573,0.352,0.1015,
+qlib158_imax10,qlib158,momentum,ok,0.0043,0.1999,0.342,0.507,0.7,0.568,0.183,0.0921,
+qlib158_imax20,qlib158,momentum,ok,-0.0053,0.2109,-0.402,0.5,-0.83,0.153,0.222,0.0257,
+qlib158_imax30,qlib158,momentum,ok,-0.0027,0.2153,-0.201,0.491,-0.41,0.427,0.227,0.0739,
+qlib158_imax5,qlib158,momentum,ok,-0.0007,0.2003,-0.053,0.504,-0.11,0.428,0.096,0.0673,
+qlib158_imax60,qlib158,momentum,ok,-0.0024,0.2109,-0.179,0.507,-0.36,0.462,0.22,0.0803,
+qlib158_imin10,qlib158,momentum,ok,-0.008,0.207,-0.611,0.491,-1.26,-0.476,-0.25,-0.0754,
+qlib158_imin20,qlib158,momentum,ok,-0.0059,0.2085,-0.449,0.486,-0.92,-0.851,-0.509,-0.1407,
+qlib158_imin30,qlib158,momentum,ok,-0.0021,0.2147,-0.154,0.493,-0.32,-0.285,-0.382,-0.0485,
+qlib158_imin5,qlib158,momentum,ok,0.0009,0.1962,0.07,0.492,0.15,0.28,-0.057,0.0415,
+qlib158_imin60,qlib158,momentum,ok,-0.0007,0.215,-0.05,0.493,-0.1,-0.303,-0.309,-0.0525,
+qlib158_imxd10,qlib158,momentum,ok,0.0081,0.2174,0.594,0.511,1.23,1.045,0.445,0.1824,
+qlib158_imxd20,qlib158,momentum,ok,0.0001,0.2244,0.004,0.509,0.01,0.65,0.307,0.1181,
+qlib158_imxd30,qlib158,momentum,ok,0.0005,0.2333,0.033,0.507,0.07,0.496,0.219,0.0958,
+qlib158_imxd5,qlib158,momentum,ok,-0.0002,0.2131,-0.014,0.497,-0.03,0.35,-0.055,0.06,
+qlib158_imxd60,qlib158,momentum,ok,-0.0016,0.2301,-0.107,0.494,-0.22,0.363,0.207,0.0692,
+qlib158_klen,qlib158,microstructure,ok,-0.0421,0.2015,-3.317,0.405,-6.88,-0.304,-0.314,-0.0545,
+qlib158_klow,qlib158,microstructure,ok,-0.045,0.1855,-3.852,0.406,-7.99,-1.645,-0.855,-0.2615,
+qlib158_klow2,qlib158,microstructure,ok,-0.0215,0.1744,-1.957,0.428,-4.06,-1.679,-0.893,-0.2373,
+qlib158_kmid,qlib158,microstructure,ok,-0.0306,0.2185,-2.224,0.429,-4.61,-0.973,-0.83,-0.1768,
+qlib158_kmid2,qlib158,microstructure,ok,-0.0272,0.2122,-2.037,0.445,-4.22,-0.757,-0.702,-0.1297,
+qlib158_ksft,qlib158,microstructure,ok,-0.0396,0.2231,-2.816,0.416,-5.84,-1.718,-1.124,-0.323,
+qlib158_ksft2,qlib158,microstructure,ok,-0.0377,0.2074,-2.885,0.435,-5.98,-1.559,-1.008,-0.2687,
+qlib158_kup,qlib158,microstructure,ok,-0.0162,0.188,-1.368,0.455,-2.83,0.307,0.175,0.0508,
+qlib158_kup2,qlib158,microstructure,ok,0.008,0.1755,0.727,0.522,1.51,0.849,0.386,0.1248,
+qlib158_ma10,qlib158,momentum,ok,0.0083,0.2405,0.547,0.509,1.13,-0.208,-0.339,-0.0414,
+qlib158_ma20,qlib158,momentum,ok,0.0042,0.2518,0.267,0.502,0.55,-0.453,-0.457,-0.0953,
+qlib158_ma30,qlib158,momentum,ok,0.0014,0.2594,0.088,0.502,0.18,-0.537,-0.514,-0.1171,
+qlib158_ma5,qlib158,momentum,ok,0.0169,0.2307,1.164,0.533,2.41,-0.194,-0.401,-0.0375,
+qlib158_ma60,qlib158,momentum,ok,0.0048,0.2684,0.284,0.497,0.57,0.016,0.063,0.0037,
+qlib158_max10,qlib158,momentum,ok,-0.0204,0.242,-1.337,0.462,-2.76,-0.453,-0.431,-0.086,
+qlib158_max20,qlib158,momentum,ok,-0.0191,0.2504,-1.212,0.473,-2.49,-0.664,-0.432,-0.1295,
+qlib158_max30,qlib158,momentum,ok,-0.0193,0.2587,-1.184,0.472,-2.42,-0.584,-0.227,-0.1182,
+qlib158_max5,qlib158,momentum,ok,-0.0137,0.238,-0.917,0.474,-1.9,-0.109,-0.21,-0.0208,
+qlib158_max60,qlib158,momentum,ok,-0.0183,0.2658,-1.095,0.472,-2.21,-0.35,-0.04,-0.0727,
+qlib158_min10,qlib158,momentum,ok,0.0293,0.2135,2.179,0.55,4.5,-0.246,-0.181,-0.0452,
+qlib158_min20,qlib158,momentum,ok,0.0222,0.222,1.584,0.539,3.26,-0.671,-0.345,-0.1314,
+qlib158_min30,qlib158,momentum,ok,0.0191,0.2277,1.329,0.526,2.72,-0.687,-0.425,-0.1373,
+qlib158_min5,qlib158,momentum,ok,0.0395,0.2108,2.977,0.576,6.16,0.133,0.036,0.0242,
+qlib158_min60,qlib158,momentum,ok,0.0245,0.2313,1.684,0.555,3.39,-0.231,-0.472,-0.0469,
+qlib158_qtld10,qlib158,momentum,ok,0.018,0.2257,1.263,0.524,2.61,-0.206,-0.26,-0.0392,
+qlib158_qtld20,qlib158,momentum,ok,0.0117,0.2381,0.783,0.529,1.61,-0.584,-0.463,-0.1183,
+qlib158_qtld30,qlib158,momentum,ok,0.0078,0.2442,0.506,0.493,1.04,-0.688,-0.591,-0.1431,
+qlib158_qtld5,qlib158,momentum,ok,0.0251,0.2187,1.823,0.544,3.77,0.018,-0.156,0.0034,
+qlib158_qtld60,qlib158,momentum,ok,0.0114,0.2538,0.71,0.505,1.43,-0.236,-0.385,-0.0513,
+qlib158_qtlu10,qlib158,momentum,ok,0.0011,0.2409,0.069,0.493,0.14,-0.375,-0.5,-0.0739,
+qlib158_qtlu20,qlib158,momentum,ok,0.0005,0.2539,0.033,0.494,0.07,-0.185,-0.283,-0.0385,
+qlib158_qtlu30,qlib158,momentum,ok,-0.003,0.262,-0.179,0.504,-0.37,-0.299,-0.208,-0.0643,
+qlib158_qtlu5,qlib158,momentum,ok,0.0097,0.2325,0.665,0.528,1.38,0.157,-0.256,0.0302,
+qlib158_qtlu60,qlib158,momentum,ok,-0.0028,0.2686,-0.167,0.509,-0.34,0.075,0.161,0.0163,
+qlib158_rank10,qlib158,momentum,ok,-0.0084,0.2237,-0.594,0.483,-1.23,0.348,-0.132,0.0614,
+qlib158_rank20,qlib158,momentum,ok,-0.005,0.2341,-0.337,0.484,-0.69,0.327,-0.032,0.0618,
+qlib158_rank30,qlib158,momentum,ok,-0.001,0.2399,-0.067,0.497,-0.14,0.695,0.162,0.1348,
+qlib158_rank5,qlib158,momentum,ok,-0.0182,0.2129,-1.358,0.455,-2.81,-0.086,-0.359,-0.0146,
+qlib158_rank60,qlib158,momentum,ok,-0.0027,0.249,-0.173,0.489,-0.35,0.57,0.13,0.1169,
+qlib158_resi10,qlib158,momentum,ok,-0.0083,0.2405,-0.547,0.491,-1.13,0.208,-0.148,0.0414,
+qlib158_resi20,qlib158,momentum,ok,-0.0042,0.2518,-0.267,0.498,-0.55,0.453,-0.008,0.0953,
+qlib158_resi30,qlib158,momentum,ok,-0.0014,0.2594,-0.088,0.498,-0.18,0.537,0.033,0.1171,
+qlib158_resi5,qlib158,momentum,ok,-0.0169,0.2307,-1.165,0.467,-2.41,0.196,-0.231,0.038,
+qlib158_resi60,qlib158,momentum,ok,-0.0048,0.2684,-0.284,0.503,-0.57,-0.016,0.047,-0.0037,
+qlib158_roc10,qlib158,momentum,ok,-0.0041,0.2464,-0.267,0.492,-0.55,0.495,0.068,0.1003,
+qlib158_roc20,qlib158,momentum,ok,-0.0003,0.2535,-0.016,0.497,-0.03,0.496,0.11,0.1053,
+qlib158_roc30,qlib158,momentum,ok,0.0001,0.2652,0.006,0.502,0.01,0.373,0.125,0.0825,
+qlib158_roc5,qlib158,momentum,ok,-0.0102,0.2346,-0.692,0.493,-1.43,0.191,-0.213,0.0375,
+qlib158_roc60,qlib158,momentum,ok,-0.0016,0.2628,-0.094,0.504,-0.19,0.154,0.255,0.0341,
+qlib158_rsqr10,qlib158,momentum,ok,-0.0087,0.1653,-0.837,0.476,-1.73,-1.039,-0.369,-0.1372,
+qlib158_rsqr20,qlib158,momentum,ok,0.0045,0.1637,0.432,0.488,0.89,0.487,-0.007,0.0641,
+qlib158_rsqr30,qlib158,momentum,ok,0.0051,0.1692,0.475,0.513,0.97,0.738,0.126,0.1034,
+qlib158_rsqr5,qlib158,momentum,ok,0.0031,0.165,0.297,0.495,0.61,-0.245,-0.199,-0.0338,
+qlib158_rsqr60,qlib158,momentum,ok,-0.0012,0.174,-0.113,0.502,-0.23,0.382,0.245,0.0532,
+qlib158_rsv10,qlib158,momentum,ok,-0.0026,0.2293,-0.178,0.497,-0.37,0.604,0.102,0.1122,
+qlib158_rsv20,qlib158,momentum,ok,-0.0008,0.2369,-0.053,0.485,-0.11,0.845,0.375,0.1634,
+qlib158_rsv30,qlib158,momentum,ok,0.0015,0.2448,0.099,0.505,0.2,0.833,0.238,0.1685,
+qlib158_rsv5,qlib158,momentum,ok,-0.0137,0.223,-0.977,0.477,-2.02,-0.088,-0.372,-0.0158,
+qlib158_rsv60,qlib158,momentum,ok,-0.0023,0.2509,-0.144,0.501,-0.29,0.439,0.203,0.0916,
+qlib158_std10,qlib158,momentum,ok,-0.0388,0.2151,-2.866,0.416,-5.92,-0.211,-0.075,-0.038,
+qlib158_std20,qlib158,momentum,ok,-0.0297,0.225,-2.097,0.436,-4.31,0.272,0.257,0.0503,
+qlib158_std30,qlib158,momentum,ok,-0.0285,0.2301,-1.967,0.448,-4.02,0.026,0.048,0.0048,
+qlib158_std5,qlib158,momentum,ok,-0.0303,0.2071,-2.321,0.444,-4.8,-0.001,-0.13,-0.0001,
+qlib158_std60,qlib158,momentum,ok,-0.0338,0.2412,-2.226,0.44,-4.49,0.281,0.284,0.0541,
+qlib158_sumd10,qlib158,reversal,ok,-0.0015,0.2355,-0.098,0.497,-0.2,0.331,-0.002,0.0625,
+qlib158_sumd20,qlib158,reversal,ok,-0.0002,0.2438,-0.011,0.492,-0.02,0.605,0.148,0.1209,
+qlib158_sumd30,qlib158,reversal,ok,-0.0009,0.2534,-0.059,0.507,-0.12,0.37,0.309,0.0767,
+qlib158_sumd5,qlib158,reversal,ok,-0.0065,0.2234,-0.464,0.486,-0.96,0.428,-0.022,0.0762,
+qlib158_sumd60,qlib158,reversal,ok,-0.0032,0.2511,-0.204,0.497,-0.41,-0.039,0.173,-0.0081,
+qlib158_sumn10,qlib158,reversal,ok,0.0015,0.2356,0.099,0.504,0.2,-0.339,-0.315,-0.0642,
+qlib158_sumn20,qlib158,reversal,ok,0.0002,0.2438,0.011,0.508,0.02,-0.603,-0.462,-0.1204,
+qlib158_sumn30,qlib158,reversal,ok,0.0009,0.2534,0.059,0.493,0.12,-0.368,-0.076,-0.0762,
+qlib158_sumn5,qlib158,reversal,ok,0.0065,0.2235,0.461,0.513,0.95,-0.454,-0.414,-0.0812,
+qlib158_sumn60,qlib158,reversal,ok,0.0032,0.2511,0.204,0.503,0.41,0.059,0.232,0.0122,
+qlib158_sump10,qlib158,reversal,ok,-0.0015,0.2355,-0.1,0.496,-0.21,0.327,-0.002,0.0619,
+qlib158_sump20,qlib158,reversal,ok,-0.0002,0.2438,-0.011,0.492,-0.02,0.604,0.147,0.1207,
+qlib158_sump30,qlib158,reversal,ok,-0.0009,0.2534,-0.058,0.507,-0.12,0.374,0.31,0.0774,
+qlib158_sump5,qlib158,reversal,ok,-0.0065,0.2232,-0.464,0.488,-0.96,0.448,-0.025,0.0798,
+qlib158_sump60,qlib158,reversal,ok,-0.0032,0.2511,-0.204,0.497,-0.41,-0.041,0.173,-0.0084,
+qlib158_vma10,qlib158,"volume,volatility",ok,0.013,0.1666,1.241,0.539,2.56,0.625,0.169,0.0902,
+qlib158_vma20,qlib158,"volume,volatility",ok,0.0146,0.169,1.367,0.541,2.81,0.17,0.003,0.0243,
+qlib158_vma30,qlib158,"volume,volatility",ok,0.0159,0.1715,1.476,0.552,3.02,0.366,0.04,0.0541,
+qlib158_vma5,qlib158,"volume,volatility",ok,0.0095,0.1661,0.908,0.534,1.88,0.15,-0.012,0.0217,
+qlib158_vma60,qlib158,"volume,volatility",ok,0.0185,0.1761,1.667,0.547,3.36,0.332,0.124,0.0499,
+qlib158_vstd10,qlib158,"volume,volatility",ok,-0.0046,0.1589,-0.463,0.493,-0.96,0.506,0.114,0.0657,
+qlib158_vstd20,qlib158,"volume,volatility",ok,0.0021,0.1681,0.197,0.505,0.4,0.66,0.212,0.0901,
+qlib158_vstd30,qlib158,"volume,volatility",ok,0.006,0.1723,0.551,0.514,1.13,0.601,0.101,0.0859,
+qlib158_vstd5,qlib158,"volume,volatility",ok,-0.0084,0.1491,-0.891,0.478,-1.84,-0.242,-0.289,-0.0305,
+qlib158_vstd60,qlib158,"volume,volatility",ok,0.0081,0.1829,0.704,0.515,1.42,0.182,0.104,0.0264,
+qlib158_vsumd10,qlib158,"volume,volatility",ok,-0.0138,0.158,-1.386,0.47,-2.86,-0.707,-0.489,-0.0964,
+qlib158_vsumd20,qlib158,"volume,volatility",ok,-0.0109,0.1737,-0.992,0.466,-2.04,-0.13,-0.3,-0.0188,
+qlib158_vsumd30,qlib158,"volume,volatility",ok,-0.012,0.1718,-1.107,0.47,-2.26,-0.002,-0.059,-0.0002,
+qlib158_vsumd5,qlib158,"volume,volatility",ok,-0.0168,0.1635,-1.631,0.44,-3.37,-1.353,-0.662,-0.187,
+qlib158_vsumd60,qlib158,"volume,volatility",ok,-0.0166,0.17,-1.547,0.44,-3.12,-0.374,-0.324,-0.0565,
+qlib158_vsumn10,qlib158,"volume,volatility",ok,0.0138,0.158,1.386,0.53,2.86,0.707,0.015,0.0964,
+qlib158_vsumn20,qlib158,"volume,volatility",ok,0.0109,0.1737,0.992,0.534,2.04,0.13,-0.221,0.0188,
+qlib158_vsumn30,qlib158,"volume,volatility",ok,0.012,0.1718,1.107,0.53,2.26,0.002,-0.061,0.0002,
+qlib158_vsumn5,qlib158,"volume,volatility",ok,0.0168,0.1635,1.631,0.56,3.37,1.353,0.331,0.187,
+qlib158_vsumn60,qlib158,"volume,volatility",ok,0.0166,0.17,1.547,0.56,3.12,0.375,-0.043,0.0567,
+qlib158_vsump10,qlib158,"volume,volatility",ok,-0.0138,0.158,-1.386,0.47,-2.86,-0.707,-0.489,-0.0964,
+qlib158_vsump20,qlib158,"volume,volatility",ok,-0.0109,0.1737,-0.992,0.466,-2.04,-0.13,-0.3,-0.0188,
+qlib158_vsump30,qlib158,"volume,volatility",ok,-0.012,0.1718,-1.107,0.47,-2.26,-0.002,-0.059,-0.0002,
+qlib158_vsump5,qlib158,"volume,volatility",ok,-0.0168,0.1635,-1.631,0.44,-3.37,-1.353,-0.662,-0.187,
+qlib158_vsump60,qlib158,"volume,volatility",ok,-0.0166,0.17,-1.547,0.44,-3.12,-0.374,-0.324,-0.0565,
+qlib158_wvma10,qlib158,"volume,volatility",ok,-0.0031,0.1425,-0.351,0.5,-0.72,0.205,-0.15,0.0246,
+qlib158_wvma20,qlib158,"volume,volatility",ok,-0.0006,0.139,-0.068,0.481,-0.14,0.646,0.026,0.0749,
+qlib158_wvma30,qlib158,"volume,volatility",ok,0.0013,0.1417,0.141,0.503,0.29,0.602,0.209,0.0737,
+qlib158_wvma5,qlib158,"volume,volatility",ok,-0.0004,0.1498,-0.045,0.5,-0.09,0.653,0.12,0.0851,
+qlib158_wvma60,qlib158,"volume,volatility",ok,0.0026,0.1504,0.276,0.498,0.56,0.4,0.321,0.048,
+sentiment_divergence,sentiment,sentiment,no_ic,,,,,,,,,IC 序列为空
+sentiment_heat,sentiment,sentiment,no_ic,,,,,,,,,IC 序列为空
+sentiment_score,sentiment,sentiment,no_ic,,,,,,,,,IC 序列为空
+sentiment_signal,sentiment,sentiment,no_ic,,,,,,,,,IC 序列为空

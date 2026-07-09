@@ -1,0 +1,11 @@
+alpha_id,zoo,theme,status,ic_mean,ic_std,icir,ic_pos_ratio,ic_tstat,ls_sharpe,top_sharpe,ls_ann_ret
+academic_carhart_mom,academic,momentum,ok,0.0177,0.2471,1.137,0.54,2.06,0.341,-0.027,0.0713
+academic_cma,academic,quality,ok,0.0104,0.1784,0.925,0.521,1.81,-0.17,0.027,-0.0259
+academic_high52w,academic,momentum,ok,0.0267,0.2728,1.555,0.55,2.83,0.778,0.639,0.168
+academic_hml,academic,value,ok,-0.0153,0.2594,-0.936,0.461,-1.7,-0.453,-0.412,-0.1009
+academic_illiq,academic,liquidity,ok,-0.0045,0.1465,-0.491,0.486,-1.01,0.33,0.114,0.0425
+academic_mkt_rf,academic,momentum,ok,0.0005,0.2558,0.032,0.489,0.07,0.667,0.276,0.1421
+academic_retskew,academic,volatility,ok,0.0238,0.1724,2.193,0.565,4.42,0.247,0.146,0.0339
+academic_rmw,academic,quality,ok,0.049,0.2653,2.934,0.578,5.91,0.275,0.418,0.0588
+academic_smb,academic,quality,ok,0.0164,0.172,1.513,0.546,3.05,0.498,0.355,0.0739
+academic_strev,academic,reversal,ok,-0.0005,0.2558,-0.032,0.511,-0.07,-0.667,-0.398,-0.1421
