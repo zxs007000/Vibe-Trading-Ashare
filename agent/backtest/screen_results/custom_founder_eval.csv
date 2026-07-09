@@ -1,0 +1,16 @@
+,状态,ic_mean,icir,ic_pos,ic_tstat,ls_sharpe,top_sharpe
+drip_water_stone,ok,,,,,,
+smart_money,ok,-0.031,-1.896,0.428,-1.99,-1.104,-0.73
+withered_tree_blooms,ERR,,,,,,
+moderate_risk,ok,-0.056,-2.687,0.406,-2.82,-0.292,-0.773
+coin_team,ok,-0.009,-0.629,0.482,-0.55,0.691,-0.673
+complete_tide,ok,0.052,1.644,0.49,0.73,0.846,2.075
+scaling_heights,ok,-0.046,-2.78,0.41,-2.92,-0.957,-1.041
+moth_to_flame,ok,-0.06,-2.939,0.406,-3.09,-0.332,-0.786
+flower_hidden,ok,0.015,1.163,0.525,1.22,1.015,0.297
+wait_rescue,ok,-0.003,-0.246,0.489,-0.26,0.997,-0.229
+equal_treatment,ok,-0.037,-2.392,0.435,-2.51,0.357,0.113
+bull_bear_game,ok,0.0,0.018,0.528,0.02,-0.373,-0.992
+panic_factor,ok,,,,,,
+synergy_effect,TIMEOUT>90s,,,,,,
+undercurrent,ok,0.001,0.093,0.489,0.1,-0.704,-0.989
