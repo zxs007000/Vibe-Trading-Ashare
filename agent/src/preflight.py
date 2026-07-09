@@ -270,6 +270,12 @@ def run_preflight(console: Optional[Console] = None) -> List[CheckResult]:
     if console is None:
         console = Console()
 
+    # 离线/沙箱环境可设 API_SKIP_PREFLIGHT=1 跳过外部网络探测，
+    # 避免启动时因外网 TLS 不通而长时间阻塞甚至挂死。
+    if os.getenv("API_SKIP_PREFLIGHT", "").strip() in ("1", "true", "yes"):
+        console.print("\n[dim]Preflight Check skipped (API_SKIP_PREFLIGHT=1)[/dim]\n")
+        return []
+
     checks = [
         _check_llm_provider,
         _check_okx,

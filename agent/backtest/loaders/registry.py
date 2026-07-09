@@ -126,7 +126,7 @@ _NO_NETWORK_FALLBACK_SOURCES: frozenset[str] = frozenset({"local"})
 # that must be politely throttled; Finnhub/AlphaVantage/Tiingo/FMP are key-gated
 # REST fallbacks placed deeper in the chain.
 FALLBACK_CHAINS: dict[str, list[str]] = {
-    "a_share":   ["astockdata", "tencent", "mootdx", "eastmoney", "baostock", "akshare", "tushare", "stock_worm", "local"],
+    "a_share":   ["stock_worm", "astockdata", "tencent", "mootdx", "eastmoney", "baostock", "akshare", "tushare", "local"],
     "us_equity": ["yahoo", "stooq", "sina", "eastmoney", "yfinance", "tiingo", "fmp", "finnhub", "alphavantage", "akshare", "local"],
     "hk_equity": ["eastmoney", "yahoo", "futu", "yfinance", "akshare", "local"],
     "crypto":    ["okx", "ccxt", "yfinance", "local"],

@@ -44,24 +44,27 @@ SYMS = [
 
 
 def pull_5min(code: str, count: int = 800) -> pd.DataFrame | None:
-    """用 mootdx 取5分钟K线。"""
+    """用 stcok_worm (通达信 TCP, 第一优先数据源) 取5分钟K线, 含 amount。
+
+    经由 stcok_worm.mootdx_source.get_kline(freq=0) 直连通达信 7709 端口,
+    返回完整时间戳 + 成交额(amount) 列, 直接满足 clouds_disperse /
+    rapids_advance 对分钟级成交额的数据需求(无需 close*volume 近似)。
+    """
     try:
-        from mootdx.quotes import Quotes
-        client = Quotes.factory(market="std")
-        # frequency: 0=5min, 1=15min, ...
-        market = 1 if code.startswith("6") else 0
-        data = client.bars(symbol=code, frequency=0, offset=count)
-        if data is None or len(data) == 0:
+        from stcok_worm import mootdx_source
+        raw = mootdx_source.get_kline(code, 0, count)
+        if not raw:
             return None
         df = pd.DataFrame({
-            "open": data["open"].astype(float),
-            "high": data["high"].astype(float),
-            "low": data["low"].astype(float),
-            "close": data["close"].astype(float),
-            "volume": data["vol"].astype(float),
-        }, index=pd.to_datetime(data["datetime"]))
+            "open": [float(r["open"]) for r in raw],
+            "high": [float(r["high"]) for r in raw],
+            "low": [float(r["low"]) for r in raw],
+            "close": [float(r["close"]) for r in raw],
+            "volume": [float(r.get("volume", 0.0)) for r in raw],
+            "amount": [float(r.get("amount", 0.0)) for r in raw],
+        }, index=pd.to_datetime([str(r["date"]) for r in raw]))
         return df
-    except Exception as e:
+    except Exception:
         return None
 
 

@@ -787,6 +787,13 @@ def _validate_path_param(value: str, kind: str) -> None:
 # Runs routes - defined in src/api/runs_routes.py
 # ============================================================================
 
+# 以 `python3 api_server.py` 运行时 __name__ == "__main__"，sys.modules 中并无
+# "api_server" 别名；下方 register_runs_routes(app) 需通过 sys.modules["api_server"]
+# 定位宿主模块，故在此把自身注册为 "api_server"（仅脚本启动时生效，import 不受影响）。
+if __name__ == "__main__":
+    import sys as _sys
+    _sys.modules.setdefault("api_server", _sys.modules["__main__"])
+
 from src.api.runs_routes import register_runs_routes  # noqa: E402
 register_runs_routes(app)
 

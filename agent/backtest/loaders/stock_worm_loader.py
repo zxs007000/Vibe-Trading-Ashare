@@ -8,6 +8,9 @@ the TDX path, otherwise the in-package 腾讯 source is used as fallback).
 Data source: 通达信 (mootdx/TDX TCP) is preferred; falls back to 腾讯 within
 the same package when TDX is unreachable. No API token required.
 
+Intervals: 日/周/月 (TDX + 腾讯) 以及 5m/15m/30m/1h (仅 TDX)。TDX 的分钟
+K线携带 ``amount`` 列，直接支撑 方正因子 clouds_disperse / rapids_advance。
+
 Markets: A-shares (SH/SZ/BJ).
 """
 
@@ -24,13 +27,21 @@ from backtest.loaders.registry import register
 logger = logging.getLogger(__name__)
 
 # Vibe-Trading interval codes -> (mootdx freq code, tencent period code)
+# mootdx freq: 9=日K 5=周K 6=月K 0=5分钟 1=15分钟 2=30分钟 3=1小时
+# 腾讯财经 K-line 仅支持 day/week/month，故 intraday 区间的 tencent period 为
+# None（跳过腾讯兜底，仅走通达信 TCP）。通达信 5m/15m/30m/1h 返回带 `amount`，
+# 这是 方正因子 (clouds_disperse / rapids_advance) 的硬性数据需求。
 _INTERVAL_MAP = {
     "1D": (9, "day"),
-    "1W": (5, "week"),
-    "1M": (6, "month"),
     "D": (9, "day"),
+    "1W": (5, "week"),
     "W": (5, "week"),
+    "1M": (6, "month"),
     "M": (6, "month"),
+    "5m": (0, None),
+    "15m": (1, None),
+    "30m": (2, None),
+    "1h": (3, None),
 }
 
 
@@ -98,9 +109,11 @@ class DataLoader:
         except Exception:
             return None
 
-        # Prefer 通达信 (TDX TCP); fall back to 腾讯 within the same package.
+        # Prefer 通达信 (TDX TCP, 不封IP, 5m/15m/30m/1h 带 amount).
+        # Intraday (period is None) has no 腾讯 fallback — 腾讯 K-line is
+        # day/week/month only.
         raw = stcok_worm.mootdx_source.get_kline(code, freq)
-        if not raw:
+        if (not raw) and period is not None:
             logger.debug(
                 "stock_worm mootdx returned nothing for %s; falling back to tencent", code
             )
@@ -111,16 +124,21 @@ class DataLoader:
         rows = []
         for r in raw:
             try:
-                rows.append(
-                    {
-                        "trade_date": pd.Timestamp(str(r["date"])[:10]),
-                        "open": float(r["open"]),
-                        "high": float(r["high"]),
-                        "low": float(r["low"]),
-                        "close": float(r["close"]),
-                        "volume": float(r.get("volume", 0.0)),
-                    }
-                )
+                # Keep the FULL timestamp (incl. intraday time); stcok_worm
+                # mootdx_source no longer truncates datetime, so 5m bars keep
+                # their HH:MM:SS instead of collapsing onto one daily index.
+                rec = {
+                    "trade_date": pd.Timestamp(str(r["date"])),
+                    "open": float(r["open"]),
+                    "high": float(r["high"]),
+                    "low": float(r["low"]),
+                    "close": float(r["close"]),
+                    "volume": float(r.get("volume", 0.0)),
+                }
+                amt = r.get("amount", None)
+                if amt is not None:
+                    rec["amount"] = float(amt)
+                rows.append(rec)
             except (KeyError, ValueError, TypeError):
                 continue
 
@@ -128,7 +146,6 @@ class DataLoader:
             return None
 
         df = pd.DataFrame(rows).set_index("trade_date").sort_index()
-        df = df[["open", "high", "low", "close", "volume"]].dropna(
-            subset=["open", "high", "low", "close"]
-        )
+        cols = [c for c in ("open", "high", "low", "close", "volume", "amount") if c in df.columns]
+        df = df[cols].dropna(subset=["open", "high", "low", "close"])
         return df
