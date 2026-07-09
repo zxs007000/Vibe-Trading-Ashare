@@ -41,7 +41,9 @@ def _daily_factor(vol_minute: np.ndarray) -> float:
     v = np.asarray(vol_minute, dtype=float)
     # 剔除 NaN
     v = v[~np.isnan(v)]
-    if len(v) < 120:
+    # 注: 论文用 1 分钟 K 线(每日~240 根); 5m 数据每日仅~44 根,
+    # 故放宽门槛(5m 代理版)。1m 数据下 44→236 同样通过。
+    if len(v) < 12:
         return np.nan
 
     # Step 1: IQR 限幅
@@ -60,16 +62,13 @@ def _daily_factor(vol_minute: np.ndarray) -> float:
     fft_cf = np.fft.rfft(v)
     p_f = np.square(np.abs(fft_cf))
 
-    # Step 4: 频带能量比
-    # 240点 rFFT 得 121 个频域点(0~120)
-    # 2分钟周期 → freq=1/2 → 第 120 点 (240/2=120)
-    # 5分钟周期 → freq=1/5 → 第 48 点  (240/5=48)
-    # band = [48, 120], total = [1, 120] (排除直流)
-    n = len(v)
-    # 归一化到 240 点的索引
-    scale = 120.0 / (n / 2)
-    band_start = max(1, int(round(48 * scale)))
-    band_end = min(len(p_f) - 1, int(round(120 * scale)))
+    # Step 4: 频带能量比(对频率分辨率自适应)
+    # 论文原意: 取 2-5 分钟周期能量占比 = 1m 频谱 upper~60% 非直流段。
+    # 用「相对频带」映射: band_start = 0.4*(NFFT-1), band_end = NFFT-1,
+    # 对 1m(240根)复现 [48,120] 区间; 对 5m(~44根)即「日内快节奏能量占比」代理。
+    nfft = len(p_f)
+    band_start = max(1, int(round(0.40 * (nfft - 1))))
+    band_end = nfft - 1
 
     total_power = np.sum(p_f[1:])
     if total_power < 1e-20:

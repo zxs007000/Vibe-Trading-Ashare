@@ -73,19 +73,11 @@ def panic_factor(
 
     # 日波动率(分钟频优先)
     if minute_bars is not None:
-        if isinstance(minute_bars.index, pd.DatetimeIndex):
-            idx = minute_bars.index
-        else:
-            idx = pd.to_datetime(minute_bars["date"])
-        t = idx.time
-        mask = ((t >= pd.Timestamp("09:30").time()) & (t <= pd.Timestamp("11:30").time())) | \
-               ((t >= pd.Timestamp("13:00").time()) & (t <= pd.Timestamp("15:00").time()))
-        cmin = pd.to_numeric(minute_bars["close"], errors="coerce").to_numpy()[mask]
-        dates = idx[mask].normalize()
-        sigma_daily = pd.Series(
-            {d: _daily_sigma(g) for d, g in
-             pd.DataFrame({"c": cmin}, index=dates).groupby(level=0)}
-        ).reindex(ret.index)
+        s = pd.Series(np.log(pd.to_numeric(minute_bars["close"], errors="coerce")),
+                      index=minute_bars.index)
+        nd = s.index.normalize()
+        intraday_ret = s.groupby(nd).diff()
+        sigma_daily = intraday_ret.groupby(nd).std().reindex(ret.index)
     else:
         # 退化: 日频波动率
         sigma_daily = ret.rolling(20, min_periods=5).std()

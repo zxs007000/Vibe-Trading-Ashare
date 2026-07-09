@@ -120,15 +120,68 @@ def _daily_synergy(close, vol, peer_bars, date):
     return float(np.mean(corrs)) if corrs else np.nan
 
 
-def synergy_effect_batch(stocks_minute: dict[str, pd.DataFrame]) -> dict[str, pd.Series]:
-    """批量计算(〔推断〕版, 用全市场作为peer群体近似)。"""
+def synergy_effect_batch(stocks_minute: dict[str, pd.DataFrame], window: int = 20) -> dict[str, pd.Series]:
+    """批量计算(向量化截面版, 用全宇宙作同群体近似)。
+
+    协同度 C = 个股日内分钟收益率 与 截面均值日内收益率 的逐日相关系数(真协同度量)。
+    辨识度 I = 个股日收益 相对 截面均值 的标准化偏离。
+    性价比 P = 短期反转(近5日日收益取负)。
+    得分 = C × I × P, 月频(window=20)滚动均值。
+
+    ⚠ 原研报需全市场+付费公式;此处为〔推断〕截面代理, 且已向量化:
+       仅 O(交易日 × 股票 × 分钟) 一次构建, 不再逐 peer 重建掩码(原版超时)。
+    """
     codes = list(stocks_minute.keys())
-    out = {}
-    for i, code in enumerate(codes):
-        # peer = 其他所有股票(近似同群体)
-        peers = [stocks_minute[c] for c in codes[:i] + codes[i+1:i+5]]
-        out[code] = synergy_effect(stocks_minute[code], peers)
-    return out
+
+    # 1) 每只股票: 日内分钟收益率 pivot(date × time)
+    pivots = {}
+    for code in codes:
+        bars = stocks_minute[code]
+        c = pd.to_numeric(bars["close"], errors="coerce")
+        dates = c.index.normalize()
+        times = c.index.time
+        r = c.groupby(dates).transform(lambda s: s.pct_change())
+        df = pd.DataFrame({"v": r.values, "d": dates, "t": times})
+        pivots[code] = df.pivot(index="d", columns="t", values="v")
+
+    # 2) 日收益代理(日内收益率均值) + 截面均值
+    daily_ret = pd.DataFrame({code: pivots[code].mean(axis=1, skipna=True) for code in codes})
+    mret = daily_ret.mean(axis=1)
+
+    # 3) 逐日协同度 C = corr(个股日内路径, 截面均值日内路径)
+    all_dates = sorted(set().union(*[set(p.index) for p in pivots.values()]))
+    C = pd.DataFrame(index=all_dates, columns=codes, dtype=float)
+    for d in all_dates:
+        cols = []
+        for code in codes:
+            piv = pivots[code]
+            if d in piv.index:
+                cols.append(piv.loc[d].values.astype(float))
+            else:
+                cols.append(np.full(piv.shape[1], np.nan))
+        M = np.array(cols, dtype=float).T  # time × stocks
+        mean_vec = np.nanmean(M, axis=1)
+        if np.nanstd(mean_vec) < 1e-12:
+            continue
+        for j, code in enumerate(codes):
+            x = M[:, j]
+            ok = np.isfinite(x) & np.isfinite(mean_vec)
+            if ok.sum() > 10 and np.nanstd(x[ok]) > 1e-12:
+                C.loc[d, code] = float(np.corrcoef(x[ok], mean_vec[ok])[0, 1])
+            else:
+                C.loc[d, code] = np.nan
+
+    # 4) 辨识度 I = (个股日收益 - 截面均值) 截面zscore
+    I = daily_ret.sub(mret, axis=0)
+    I = (I - I.mean(axis=0)).div(I.std(axis=0).replace(0, np.nan))
+
+    # 5) 性价比 P = 短期反转(近5日日收益取负)
+    P = -daily_ret.rolling(5, min_periods=3).mean()
+
+    # 6) 合成 + 滚动
+    score = C * I * P
+    factor = score.rolling(window, min_periods=5).mean()
+    return {code: factor[code] for code in codes}
 
 
 if __name__ == "__main__":

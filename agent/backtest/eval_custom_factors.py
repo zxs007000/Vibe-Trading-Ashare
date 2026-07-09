@@ -117,6 +117,8 @@ def part_b():
     daily_close = pd.DataFrame({c: d["close"].resample("D").last() for c, d in stocks_minute.items()}).sort_index()
     daily_ret = daily_close.pct_change()
     fwd = daily_ret.shift(-1)
+    # 市场收益代理(截面均值), 供 panic_factor 计算真实"惊恐度" S_t=|r_t-m_t|/(...)
+    market_ret = daily_ret.mean(axis=1)
     # 日频 bars（供 coin_team/panic_factor/withered_tree 使用）
     daily_bars = {c: pd.DataFrame({"open": d["open"].resample("D").first(),
                                    "high": d["high"].resample("D").max(),
@@ -141,7 +143,7 @@ def part_b():
         ("wait_rescue", F.wait_rescue_batch, "minute"),
         ("equal_treatment", F.equal_treatment_batch, "minute"),
         ("bull_bear_game", F.bull_bear_game_batch, "minute"),
-        ("panic_factor", F.panic_factor_batch, "daily"),
+        ("panic_factor", F.panic_factor_batch, "panic"),
         ("synergy_effect", F.synergy_effect_batch, "minute"),
         ("undercurrent", F.undercurrent_batch, "minute"),
     ]
@@ -153,6 +155,8 @@ def part_b():
                 res = fn(stocks_minute)
             elif kind == "daily":
                 res = fn(daily_bars)
+            elif kind == "panic":
+                res = fn(daily_bars, stocks_minute, market_ret)
             else:  # single_daily
                 res = {c: fn(b) for c, b in daily_bars.items()}
             fdf = pd.DataFrame({c: s for c, s in res.items() if len(s.dropna()) > 5})
