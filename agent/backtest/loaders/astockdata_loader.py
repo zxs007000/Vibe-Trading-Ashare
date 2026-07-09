@@ -196,9 +196,11 @@ class DataLoader:
         out.index.name = "trade_date"
         for col in ("open", "high", "low", "close", "volume"):
             out[col] = pd.to_numeric(out[col], errors="coerce")
-        out = out[["open", "high", "low", "close", "volume"]].dropna(
-            subset=["open", "high", "low", "close"]
-        )
+        keep = ["open", "high", "low", "close", "volume"]
+        if "amount" in out.columns:
+            out["amount"] = pd.to_numeric(out["amount"], errors="coerce")
+            keep = keep + ["amount"]
+        out = out[keep].dropna(subset=["open", "high", "low", "close"])
         return out.sort_index() if not out.empty else None
 
     @staticmethod
@@ -222,9 +224,11 @@ class DataLoader:
         out = out.sort_index()
         for col in ("open", "high", "low", "close", "volume"):
             out[col] = pd.to_numeric(out[col], errors="coerce")
-        out = out[["open", "high", "low", "close", "volume"]].dropna(
-            subset=["open", "high", "low", "close"]
-        )
+        keep = ["open", "high", "low", "close", "volume"]
+        if "amount" in out.columns:
+            out["amount"] = pd.to_numeric(out["amount"], errors="coerce")
+            keep = keep + ["amount"]
+        out = out[keep].dropna(subset=["open", "high", "low", "close"])
         # 截止到 end_date 当天的最后一根K线（含收盘）
         end_ts = pd.Timestamp(end_date) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
         out = out.loc[pd.Timestamp(start_date):end_ts]

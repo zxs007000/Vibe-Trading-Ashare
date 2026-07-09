@@ -130,7 +130,7 @@ def part_b():
                                    "volume": d["volume"].resample("D").sum()})
                   for c, d in stocks_minute.items()}
 
-    # 方正各因子（除依赖 amount 的两个: clouds_disperse / rapids_advance）
+    # 方正各因子（clouds_disperse / rapids_advance 自 stock_worm 返回 5m amount 后已可用）
     # kind: 'minute' = _batch(stocks_minute); 'daily' = _batch(daily_bars);
     #       'single_daily' = 逐股调用单股函数(daily); 'panic' = _batch(daily, minute, mkt);
     #       'daily_mkt' = _batch(daily_bars, market_ret)
@@ -150,6 +150,9 @@ def part_b():
         ("panic_factor", F.panic_factor_batch, "panic"),
         ("synergy_effect", F.synergy_effect_batch, "minute"),
         ("undercurrent", F.undercurrent_batch, "minute"),
+        # ── 依赖分钟级成交额(amount), stock_worm 第一优先源已补齐 ──
+        ("clouds_disperse", F.clouds_disperse_batch, "minute"),
+        ("rapids_advance", F.rapids_advance_batch, "minute"),
         # ── 华泰金工(新复现) ──
         ("HT:idiosyncratic_volatility", H.idiosyncratic_volatility_batch, "daily_mkt"),
         ("HT:downside_deviation", H.downside_deviation_batch, "daily"),
