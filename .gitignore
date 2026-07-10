@@ -106,3 +106,6 @@ stock_worm/data/
 # Python bytecode / caches
 __pycache__/
 *.pyc
+
+# Ops runtime scaffolding (monitor/pid/logs), not project source
+agent/ops/
