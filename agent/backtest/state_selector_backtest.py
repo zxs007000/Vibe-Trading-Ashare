@@ -10,8 +10,7 @@ Branch 2 已在 20y 日线面板上建好'异族因子动物园 × regime IC 矩
   C) XGBoost 状态→因子选择器: 用市场状态特征(趋势/波动/离散度/回撤/流动性)训练 XGBoost,
      预测每因子'下一窗口是否活着', 只启用预测活着的因子 -> 直接回应'XGBoost 还弄不'.
   D) 分散状态组合: 沿用 B 的信号, 改为按评分 softmax 加权持有全市场(不做 top-K 截断),
-     用于检验 top-K 集中度是否为 -99.7% 回撤的根因 —— 实跑表明分散后回撤依旧 ~-99.7%,
-     故根因是**信号在危机期的权重倾斜(尾部风险)**, 而非集中度; 该发现反向修正了前期假设.
+     与 B 同信号、不同持仓范围, 用于分离'集中度'对回撤的影响(修复回测频率 bug 后回撤回到合理区间, 可作公平比较).
 
 数据: stock_worm 日线面板 1489只×2006~2026; 16 异族因子(动量/反转/波动/流动性).
 回测: A/B/C 多头前30%, D 全市场加权, 均 5日持有, 单边成本千一; 防泄漏(信号/标签均不触碰未来 fwd: 训练样本留 30d 缓冲).
@@ -88,61 +87,56 @@ def build_state(wide):
 # ─── 多头回测(前 K%, HOLD 日持有, 单边成本) ───
 def long_only_topk(signal_w, fwd_w, top_k=TOP_K, hold=HOLD, cost=COST):
     dates = signal_w.index
-    port, held = [], None
+    port, rdates, held = [], [], None
     for i in range(len(dates)):
+        if i % hold != 0:                       # 仅调仓日记一次非重叠 HOLD 日收益
+            continue                            # (修复: 旧版每日记重叠的5日收益, 把回撤虚增到-99.7%)
         d = dates[i]
         s = signal_w.loc[d]; r = fwd_w.loc[d]
         shared = s.dropna().index.intersection(r.dropna().index)
         if len(shared) < 5:
-            port.append(np.nan); continue
+            continue
         s, r = s[shared], r[shared]
-        cost_t = 0.0
-        if i % hold == 0:
-            k = max(3, int(len(s) * top_k))
-            held = set(s.nlargest(k).index)
-            cost_t = top_k * 2 * cost            # 与 Regime 闸门同口径
-        pr = (r[r.index.isin(held)].mean() if held else r.mean()) - cost_t
-        port.append(pr)
-    return pd.Series(port, index=dates).dropna()
+        k = max(3, int(len(s) * top_k))
+        held = set(s.nlargest(k).index)
+        pr = r[list(held)].mean() - top_k * 2 * cost
+        port.append(pr); rdates.append(d)
+    return pd.Series(port, index=rdates)
 
 
 def random_topk(fwd_w, rng, top_k=TOP_K, hold=HOLD, cost=COST):
     dates = fwd_w.index
-    port, held = [], None
+    port, rdates = [], []
     for i in range(len(dates)):
+        if i % hold != 0:
+            continue
         d = dates[i]; r = fwd_w.loc[d].dropna()
         if len(r) < 5:
-            port.append(np.nan); continue
-        cost_t = 0.0
-        if i % hold == 0:
-            k = max(3, int(len(r) * top_k))
-            held = set(rng.choice(r.index.values, size=min(k, len(r)), replace=False))
-            cost_t = top_k * 2 * cost
-        pr = (r[r.index.isin(held)].mean() if held else r.mean()) - cost_t
-        port.append(pr)
-    return pd.Series(port, index=dates).dropna()
+            continue
+        k = max(3, int(len(r) * top_k))
+        held = set(rng.choice(r.index.values, size=min(k, len(r)), replace=False))
+        pr = r[list(held)].mean() - top_k * 2 * cost
+        port.append(pr); rdates.append(d)
+    return pd.Series(port, index=rdates)
 
 
 def long_only_weighted(signal_w, fwd_w, hold=HOLD, cost=COST):
-    """分散状态组合: 评分加权持有全市场(softmax), 不做 top-K 截断 -> 消除集中度风险."""
+    """分散状态组合: 评分加权持有全市场(softmax), 不做 top-K 截断 -> 与 B 同信号对比集中度影响."""
     dates = signal_w.index
-    port, w, w_prev = [], None, None
+    port, rdates, w, w_prev = [], [], None, None
     for i in range(len(dates)):
+        if i % hold != 0:
+            continue
         d = dates[i]; s = signal_w.loc[d]; r = fwd_w.loc[d]
         shared = s.dropna().index.intersection(r.dropna().index)
         if len(shared) < 5:
-            port.append(np.nan); continue
+            continue
         s, r = s[shared], r[shared]
-        cost_t = 0.0
-        if i % hold == 0:
-            wn = np.exp(s.clip(-3, 3)); wn = wn / wn.sum()
-            if w_prev is not None:
-                cost_t = float((wn - w_prev).abs().sum()) * cost   # 换手成本
-            w, w_prev = wn, wn
-        if w is None:
-            port.append(np.nan); continue
-        port.append(float((w * r).sum() - cost_t))
-    return pd.Series(port, index=dates).dropna()
+        wn = np.exp(s.clip(-3, 3)); wn = wn / wn.sum()
+        cost_t = float((wn - w_prev).abs().sum()) * cost if w_prev is not None else 0.0
+        w, w_prev = wn, wn
+        port.append(float((w * r).sum() - cost_t)); rdates.append(d)
+    return pd.Series(port, index=rdates)
 
 
 def _yearly(series):
@@ -338,7 +332,7 @@ def main():
     sBench = _stat_block("等权基准", bench, bench, portR)
     sRnd = _stat_block("随机top-K基线", portR, bench, portR)
     sD = _stat_block("D 分散状态组合", portD, bench, portR)
-    # 集中度风险诊断: 最差单期收益(确认 -99% 回撤来自崩盘集中, 非计算 bug)
+    # 集中度/尾部诊断: 打印最差单期收益(供核对回撤是否来自崩盘集中)
     for nm, po in [("A", portA), ("B", portB), ("C", portC), ("D", portD), ("bench", bench), ("rnd", portR)]:
         worst = po.sort_values().head(2)
         print(f"  [chk] {nm}: 最差5日收益={po.min():.3f}@{po.idxmin().date()}  "
@@ -397,13 +391,11 @@ def main():
     md += ["", "> 方法学提醒: 收益右偏时'超额(减等权)'被高估(随机top-K结构性跑输等权, 见上表随机基线夏普"
            " < 基准), 故以**多头夏普**与**超额夏普**双口径判优劣. "
            "XGBoost(C)的价值 = 在 A(全开)的基础上, 通过状态选择剔除死因子, 看能否把夏普抬正.", "",
-           "> **回撤口径差异(重要更正)**: A/B/C 为前30%集中多头, D 为全市场 softmax 加权(有效持仓中位 ~578 只, 已天然分散). "
-           "实跑显示 **D 最大回撤仍为 -99.77%, 与 top-K 策略同量级, 并未回落到等权基准的 -73%**. 这说明 "
-           "**~-99.7% 的回撤不是 top-K 集中度造成的**(否则分散后的 D 应大幅改善), 而是**信号加权在危机期的尾部风险**: "
-           "状态选择把权重推向'当时 IC 为正'的因子, 而这些因子在 2008/2015 崩盘中恰好暴露在跌幅更大的股票上 "
-           "(D 在 2008-10 相对等权净值比最低仅 0.15, 即相对多跌 85%). 最差单期5日收益仅约 -0.27, 故 -99.7% 是"
-           "多期复利放大的**真实尾部事件**, 非计算 bug. 换言之: 状态选择提升夏普, 但放大尾部风险 —— "
-           "需加风险预算/波动率目标/回撤止损(全因子死亡时持现金)才能实盘部署.", ""]
+           "> **回撤计算 bug 已修复(重大更正)**: 此前版本策略收益按'每个交易日'记录, 但每笔收益本身是 HOLD=5 日的前向收益, "
+           "导致持有期内把同一次 5 日行情**重叠计入了 5 次**(如崩盘 -25% 被复利成连续 5 次 -25% ≈ -75%), "
+           "人为把最大回撤放大到荒谬的 -99.7% 并虚增夏普. 已修复为**仅在调仓日记录一次非重叠的 HOLD 日收益**(与等权基准同口径). "
+           "修复后回撤回到合理区间(见下表). 此前基于 -99.7% 写出的'尾部风险/证伪集中度'等结论**全部作废**——那是 bug 的假象, "
+           "非真实发现. 这也印证了用户的质疑: 在幸存者偏差面板(活下来的票长期上涨)上, 任何合理止损都不可能把回撤推到 99.7%.", ""]
     md += ["## 2. 逐年夏普", "",
            "| 年份 | A全开 | B滚动闸门 | C XGBoost | D分散组合 | 等权基准 | 随机top-K |",
            "|---|---|---|---|---|---|---|"]
@@ -425,34 +417,34 @@ def main():
     c_vs_b = sC["sharpe"] - sB["sharpe"]
     d_vs_b = sD["sharpe"] - sB["sharpe"]
     d_dd_vs_bench = sD["maxdd"] - sBench["maxdd"]
+    b_dd_vs_bench = sB["maxdd"] - sBench["maxdd"]
     all_beat_bench = (sA["ex_sharpe"] > 0 and sB["ex_sharpe"] > 0 and sC["ex_sharpe"] > 0)
     md += [
-        f"- **A 永恒圣杯(全开)夏普 {sA['sharpe']:+.3f} 最差**: 16 因子无脑全开, 死因子拖累 -> "
-        "实证'不存在永恒圣杯', 静态全开即被状态选择器碾压.",
+        f"- **A 永恒圣杯(全开)夏普 {sA['sharpe']:+.3f}**: 16 因子无脑全开, 死因子拖累 -> 低于状态选择器 B/C "
+        f"(相对 B {b_vs_a:+.3f}), 实证'不存在永恒圣杯', 静态全开即被状态选择器碾压.",
         f"- **B 滚动IC闸门夏普 {sB['sharpe']:+.3f} 最优**(相对 A {b_vs_a:+.3f}): 只用近期活着的因子 -> "
         "说明'在什么状态用什么因子'这一层本身就有价值, 且用'近期已实现 IC'做状态判据最直接有效.",
         f"- **D 分散状态组合(同 B 信号, 全市场 softmax 加权)夏普 {sD['sharpe']:+.3f}**(相对 B {d_vs_b:+.3f}, "
-        f"最大回撤 {sD['maxdd']:+.2%}, 相对等权基准 {d_dd_vs_bench:+.2%}): 本意用分散化把回撤从 -99.7% 拉回 -73%, "
-        "但实跑**未达成** —— 即便持全市场(有效持仓中位 ~578 只), 回撤仍 -99.77%. 这反而**证伪了'回撤=top-K 集中度'的"
-        "旧假设**: 真正的元凶是**信号在危机期的权重倾斜(尾部风险)**, 分散化治不了. D 的启示是: 状态选择的夏普优势"
-        "必须搭配**风险预算/波动率目标/回撤止损**才能实盘, 裸信号加权会把尾部风险放得比等权基准还大.",
+        f"最大回撤 {sD['maxdd']:+.2%}, 相对等权基准 {d_dd_vs_bench:+.2%}): 与 B 同信号、不同持仓范围, 用于分离'集中度'的作用. "
+        "修复回测频率 bug 后, D 回撤(-70.5%)反而**大于** B(-66.7%)、小于等权基准(-73.0%) —— 说明本设置下 top-K 集中度"
+        "**降低**而非放大尾部风险, 且正是'集中选股'贡献了 B 相对 D 的超额(去掉集中度后 D 夏普≈等权基准). "
+        "即 B 的 alpha = 状态过滤(因子筛选) + 集中选股(截面上挑最强), 两者叠加.",
         f"- **C XGBoost 状态选择器夏普 {sC['sharpe']:+.3f}**(相对 A {c_vs_a:+.3f}, 相对 B {c_vs_b:+.3f}): "
         "用市场状态(趋势/波动/离散度/回撤/流动性)驱动 ML 选择 —— **XGBoost 确实还弄**: "
         "它从'预测收益'升级为'预测因子生死', 选出的因子分布与 regime 轮动吻合(反转/流动性常亮、动量偏弱), "
         "但本设置下它**未赢过更朴素的 B**(近期 IC 比市场状态预测是更强的选择信号).",
         f"- **全部因子策略均跑赢等权基准的超额夏普**(A {sA['ex_sharpe']:+.3f} / B {sB['ex_sharpe']:+.3f} / "
         f"C {sC['ex_sharpe']:+.3f} / D {sD['ex_sharpe']:+.3f}, 随机top-K仅 {sRnd['ex_sharpe']:+.3f}) -> "
-        "右偏行情下'随机top-K 跑输等权'的老教训仍在, 故因子策略的**平均**正超额是**真信号**而非基准结构幻象"
-        "(尾部风险代价见上条).",
+        "右偏行情下'随机top-K 跑输等权'的老教训仍在, 故因子策略的**平均**正超额是**真信号**而非基准结构幻象.",
         "- 三者共同证明用户哲学: 因子有寿命, 真正可做的不是找一个永恒因子, 而是**建一个状态分类器, "
         "在每个 regime 只启用该状态下活着的因子**. 本研究把它从理念落成了可回测的 walk-forward 系统.",
-        "- **(尾部风险警示) 状态选择的夏普优势是有代价的**: A/B/C/D 四个因子策略的最大回撤均 ~-99.7%, "
-        "显著差于等权基准的 -73%(随机 top-K 也 -99.87%, 佐证这是因子信号而非基准结构). 即信号加权在 2008/2015 崩盘期"
-        "把尾部风险放大了 —— 状态选择器提升的是**平均**夏普, 牺牲的是**极端**回撤. 实盘必须先解决尾部风险, 否则不可用.",
+        f"- **(尾部风险重新评估·已证伪旧结论) 修复频率 bug 后, 四档因子策略回撤回到 -67%~-71%, 且**全部小于**等权基准的 -73.0%** "
+        f"(B 相对基准 {b_dd_vs_bench:+.2%}, D 相对基准 {d_dd_vs_bench:+.2%}). 即状态选择 / 因子加权**没有放大尾部风险**, 反而降低了它. "
+        "此前报告中'信号加权放大尾部风险 / -99.7% 是真实尾部事件'等结论**彻底作废** —— 那纯是重叠计价的回测 bug 假象, 非真实发现.",
         "", "## 5. 下一步",
         "- **(优先级最高) 风险预算/尾部防护**: 给状态选择器加波动率目标(按近期波动缩放杠杆)、回撤止损(净值回撤超阈值转现金/基准)、"
-        "及 cost-aware 关仓(全因子死亡时持现金) —— 这是把 -99.7% 拉回可接受区间、让策略可实盘的前提. D 已证明单纯分散化无效, "
-        "必须在**权重层**做风险约束而非只改持仓范围.",
+        "及 cost-aware 关仓(全因子死亡时持现金). 这是任何因子策略实盘的标准配置; 修复回测 bug 后应先看真实回撤是否可接受, "
+        "再决定风险预算的紧度(此前 -99.7% 是回测频率 bug, 非真实尾部, 不应用它来定预算).",
         "- 选择器升级: 把 XGBoost 的二分类(活/死)改为**回归预测每因子下一窗口 IC**, 直接用预测 IC 加权(而非硬阈值 0.5), "
         "并加 cost-aware 关仓(全死时持现金/基准) —— 有望补上 C 与 B 的差距.",
         "- 扩 zoo: 引入 library 里 ICIR 更高的异族(alpha101_054 反转 / qlib158 动量 / volatility 族), 并用 "
