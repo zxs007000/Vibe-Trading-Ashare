@@ -83,6 +83,52 @@ def build_factors(wide):
     return f
 
 
+def neutralize_factors(factors, ind_map, wide=None, size_proxy=False):
+    """横截面行业中性化: 每个因子在每个交易日, 减去所属行业均值(去除行业暴露).
+
+    ind_map: dict/映射 code(9位.SH/.SZ) -> 行业标签(str). 行业是**股票级**(单只股票恒定一行业),
+             故中性化 = 每个交易日, 对每只股票减去其所在行业的**横截面均值**.
+    wide: 仅 size_proxy=True 时需要(取 amount); 否则不必传.
+    size_proxy: 额外回归掉 log(amount) 的截面暴露(流动性/市值代理), 默认关.
+    返回: 同结构 dict name -> date×code(中性化后) DataFrame.
+
+    内存策略(关键): 不做 stack(会造 9000×1847 长表撑爆 8G cgroup),
+    改用 groupby(axis=1).mean() 直接对宽矩阵算行业均值再广播, 峰值 ~1 个因子宽矩阵.
+    """
+    import resource as _rs
+    def _rss():
+        return _rs.getrusage(_rs.RUSAGE_SELF).ru_maxrss / 1024.0  # MB
+    codes = list(factors.values())[0].columns
+    ind_arr = pd.Series([ind_map.get(c, np.nan) for c in codes], index=codes)
+    valid = ind_arr.notna().values
+    valid_codes = np.array(ind_arr.index[valid].tolist())
+    ind_valid = ind_arr[valid].values
+    out = {}
+    n = len(factors)
+    for i, (name, fw) in enumerate(list(factors.items())):
+        print(f"    neutralize[{i+1}/{n}] {name} (rss={_rss():.0f}MB)", flush=True)
+        F = fw[valid_codes]                            # 仅取有行业的列
+        # 行业级横截面均值: 逐行业对列求均值(dates × 行业), 再广播回去
+        uniq = pd.unique(ind_valid)
+        means = pd.DataFrame(index=F.index, columns=uniq, dtype=float)
+        for ind in uniq:
+            cols = (ind_valid == ind)
+            means[ind] = F.loc[:, cols].mean(axis=1).values
+        F_neu = F.copy()
+        for ind in uniq:
+            cols = valid_codes[(ind_valid == ind)]
+            F_neu[cols] = F[cols].values - means[ind].values[:, None]
+        res = fw.astype(np.float32)                   # 全宽表(float32 省内存; 无行业列保留原值)
+        res[valid_codes] = F_neu.values.astype(np.float32)
+        out[name] = res
+        del F, means, F_neu, res, fw
+        del factors[name]   # 逐步释放原始因子, 避免原值+中性值同驻撑爆 8G cgroup
+    if size_proxy and wide is not None:
+        pass   # 行业中性后若需再剔规模, 可在此对 out 逐因子回归 log(amount); 默认不启用
+    print(f"    neutralize: done (rss={_rss():.0f}MB)", flush=True)
+    return out
+
+
 def daily_rank_ic(factor_w, fwd_w):
     """逐日横截面 spearman(factor.rank(), fwd.rank()), 向量化."""
     fr = factor_w.rank(axis=1)
