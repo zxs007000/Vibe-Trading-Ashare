@@ -1,5 +1,22 @@
 """xgb_selector.py — 用 XGBoost 选股(排雷结论的"用法"落地).
 
+============================================================
+⚠️ 重要修正 (2026-07-10): 本脚本早期报告的 "OOS IC +0.0071 / ICIR 0.75 /
+   多头正超额" 结论 **已证伪**, 仅供管线参考, 请勿据其下结论.
+根因:
+  1) fwd 构造错误: 用 daily_close.pct_change().shift(-1).reindex(trading)
+     求次日收益, 在股票交易日不完全对齐时留下 NaN 缺口, 次日收益被错位,
+     信号被噪音灌入. (正确做法见 cloud_backtest.py 的 _load_prep: 先丢
+     全 NaN 交易日再 pct_change.)
+  2) 基准偏误 (benchmark-bias illusion): 组合层以"等权基准"为对照算超额,
+     但收益右偏时随机 top-K 会结构性跑输等权基准, 故 "超额(减等权)" 被系统性
+     高估; 本脚本从未引入随机 top-K 基线做对照, 该偏误未被识别.
+严格复核 (cloud_backtest.py, 全 288 只 / 正确 fwd / 无泄漏 walk-forward /
+独立种子随机基线) 结论: XGBoost **OOS rank-IC ≈ −0.01 (近零微负)**, 无可靠
+截面预测力; 组合层表面优势经基准偏误修正后不成立. 以
+`云端回测_XGBoost选股报告.md` 为准.
+============================================================
+
 排雷结论(见 排雷报告 Section 十): founder 头部因子 IC 为正但因子->次日收益
 呈"非单调(倒U)"结构, 因此线性多空组合必然亏钱. XGBoost 是树模型, 原生
 支持非单调映射, 可把因子信息转化为可用的多头组合.
@@ -185,6 +202,8 @@ def main():
     print(f"\n  ── [对照]线性组合多头(前{TOP_K:.0%}, 持有1日, 含成本) ──")
     print(f"    多头日收益均值={lin_port.mean():+.5f}  夏普={_sharpe(lin_port.values):.3f}  累计={(1+lin_port).cumprod().iloc[-1]:.4f}")
 
+    print(f"\n  ⚠️ 警告: 本脚本 fwd 构造有缺陷(见文件头), 且未引入随机 top-K 基线, "
+          f"上述 OOS IC / 多头超额 **不可直接当 alpha**. 以 cloud_backtest.py 的严格复核为准.")
     print(f"\n  耗时 {time.time()-t0:.1f}s")
     print("=" * 60)
 

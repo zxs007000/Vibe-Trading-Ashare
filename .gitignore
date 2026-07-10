@@ -96,3 +96,13 @@ agent/backtest/screen_results/*.pkl
 agent/backtest/screen_results/*.bak
 agent/backtest/screen_results/*.log
 agent/backtest/screen_results/_5m_cache*
+
+# External data lake (sibling dir /workspace/stock_worm, kept out of repo).
+# Listed defensively: large factor/price caches must never be committed.
+stock_worm/data/
+**/stock_worm/data/*.pkl
+**/stock_worm/data/*.parquet
+
+# Python bytecode / caches
+__pycache__/
+*.pyc
