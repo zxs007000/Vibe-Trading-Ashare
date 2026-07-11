@@ -112,7 +112,8 @@ def build_daily():
     raw = pd.read_parquet(FUND_RAW)
     cal = _load_calendar()
     amount = _load_amount(cal)                       # date×code 成交额(规模代理)
-    ind = pd.read_parquet(IND_MAP).set_index("code")["csrc_industry"]
+    ind_df = pd.read_parquet(IND_MAP).drop_duplicates("code")   # 行业表去重(避免重复码)
+    ind_d = dict(zip(ind_df["code"], ind_df["csrc_industry"]))
     factor_names = list(INDICATORS.keys())
 
     # 1) 每码前向填充到日线
@@ -125,11 +126,16 @@ def build_daily():
         daily[name] = piv
 
     # 2) 规模分位桶(按当日 amount 分 10 桶)
-    codes = list(daily[factor_names[0]].columns)
+    #    统一代码轴: 取所有因子列的并集, 避免各因子覆盖码数不同(ROE 1847 / rev_yoy·profit_yoy 1846)
+    #    导致 arr 宽度与 bucket/ind_arr 错位 -> IndexError.
+    all_cols = set()
+    for _n in factor_names:
+        all_cols |= set(daily[_n].columns)
+    codes = sorted(all_cols)
     sz = amount.reindex(index=cal, columns=codes)
     sz_rank = sz.rank(axis=1, pct=True)
     bucket = np.minimum((sz_rank * 10).fillna(-1).astype(int), 9).values  # (T, n_codes)
-    ind_arr = ind.reindex(codes).values  # (n_codes,) 可能含 NaN
+    ind_arr = np.array([ind_d.get(c, np.nan) for c in codes])  # 长度严格=len(codes), 避免行业表重复码错位
     ind_uniq = pd.unique(ind_arr[~pd.isna(ind_arr)])
 
     def demean(arr_t, mask):
@@ -140,7 +146,7 @@ def build_daily():
 
     neu = {}
     for name in factor_names:
-        m = daily[name].astype(np.float32)
+        m = daily[name].reindex(columns=codes).astype(np.float32)
         arr = m.values.copy()  # (T, n_codes) 避免链式赋值
         for i in range(arr.shape[0]):
             row = arr[i].copy()
