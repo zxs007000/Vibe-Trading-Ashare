@@ -80,7 +80,62 @@ def build_factors(wide):
     f["amihud_20"] = (ret.abs() / amount).rolling(20).mean()     # |ret|/成交额
     dolvol = amount.rolling(20).mean()
     f["dolvol_trend"] = amount / dolvol - 1                       # 近期流动性 vs  trailing
+    # ---- 技术面 technical ----
+    ma20 = close.rolling(20).mean(); ma60 = close.rolling(60).mean()
+    f["ma_dev_20"] = close / ma20 - 1
+    f["ma_dev_60"] = close / ma60 - 1
+    ema12 = close.ewm(span=12, adjust=False).mean()
+    ema26 = close.ewm(span=26, adjust=False).mean()
+    macd = ema12 - ema26
+    f["macd_hist"] = (macd - macd.ewm(span=9, adjust=False).mean()) / close   # 标准化 MACD 柱
+    gain = ret.clip(lower=0); loss = (-ret).clip(lower=0)
+    rs = gain.rolling(14).mean() / (loss.rolling(14).mean() + 1e-12)
+    f["rsi_14"] = 1 - 1 / (1 + rs)                                # 0~1
+    s20 = close.rolling(20).std()
+    f["boll_w"] = (ma20 + 2 * s20 - (ma20 - 2 * s20)) / ma20      # 布林带宽
+    f["adx_14"] = _adx(high, low, close, 14)                      # 趋向强度
+    # ---- 微观结构 microstructure ----
+    f["high_52w"] = close / close.rolling(252).max() - 1          # 距52周新高
+    f["overnight_gap"] = open_ / close.shift(1) - 1               # 今开/昨收
+    f["intraday_range"] = (high - low) / close                    # 日内振幅
+    f["downside_vol_60"] = ret.clip(upper=0).rolling(60).std()    # 下行波动
+    f["drawup_60"] = close.rolling(60).max() / close - 1          # 距60日高跌幅(回撤近似)
+    # ---- 量价 volume-price ----
+    f["vol_ratio"] = vol / vol.rolling(20).mean()                 # 异常放量
+    f["vol_price_corr"] = ret.rolling(20).corr(vol.pct_change())  # 量价相关
+    f["amount_strength"] = amount / amount.rolling(60).mean() - 1 # 成交强度
     return f
+
+
+def _adx(high, low, close, n=14):
+    """标准 ADX(趋向强度), 向量化. 返回 date×code DataFrame."""
+    up = high.diff(); dn = -low.diff()
+    plus_dm = ((up > dn) & (up > 0)) * up
+    minus_dm = ((dn > up) & (dn > 0)) * dn
+    pc = close.shift(1)
+    tr = (high - low).combine((high - pc).abs(), np.maximum).combine((low - pc).abs(), np.maximum)
+    atr = tr.rolling(n).mean()
+    pdi = plus_dm.rolling(n).mean() / (atr + 1e-12) * 100
+    mdi = minus_dm.rolling(n).mean() / (atr + 1e-12) * 100
+    dx = (pdi - mdi).abs() / (pdi + mdi + 1e-12) * 100
+    return dx.rolling(n).mean()
+
+
+# 因子 -> 类型(family), 用于按类型分组对比
+FACTOR_FAMILY = {
+    "mom_5": "动量", "mom_20": "动量", "mom_60": "动量", "mom_120": "动量",
+    "mom_250": "动量", "mom_12_1": "动量",
+    "rev_5": "反转", "rev_20": "反转", "rev_60": "反转", "rev_intraday": "反转",
+    "vol_20": "波动", "vol_60": "波动", "ret_skew_60": "波动",
+    "ivol_60": "特质波动",
+    "amihud_20": "流动性", "dolvol_trend": "流动性",
+    "ma_dev_20": "技术面", "ma_dev_60": "技术面", "macd_hist": "技术面",
+    "rsi_14": "技术面", "boll_w": "技术面", "adx_14": "技术面",
+    "high_52w": "微观结构", "overnight_gap": "微观结构", "intraday_range": "微观结构",
+    "downside_vol_60": "微观结构", "drawup_60": "微观结构",
+    "vol_ratio": "量价", "vol_price_corr": "量价", "amount_strength": "量价",
+}
+ALL_FACTOR_NAMES = list(FACTOR_FAMILY.keys())
 
 
 def neutralize_factors(factors, ind_map, wide=None, size_proxy=False):

@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from factor_zoo_daily import (load_wide, build_factors, daily_rank_ic,
-                              neutralize_factors)
+                              neutralize_factors, FACTOR_FAMILY)
 
 OUT_DIR = Path(__file__).parent / "screen_results"
 SF_PANEL = Path("/workspace/stock_worm/data/ashare_daily_panel_survivorfree.parquet")
@@ -133,7 +133,9 @@ def main():
            (" | 中性" if ic_neu is not None else "") + " |",
            "|---|---|---" + ("|---|" if ic_neu is not None else "")]
     for name in full_raw.sort_values(ascending=False).index:
-        row = f"| {name} | {full_old[name]:+.4f} | {full_raw[name]:+.4f}" if old_ic is not None else \
+        ov = full_old.get(name)
+        old_str = f"{ov:+.4f}" if (ov == ov and ov is not None) else "-"
+        row = f"| {name} | {old_str} | {full_raw[name]:+.4f}" if old_ic is not None else \
               f"| {name} | - | {full_raw[name]:+.4f}"
         if ic_neu is not None:
             row += f" | {full_neu[name]:+.4f} |"
@@ -142,7 +144,25 @@ def main():
            f"- 修正版(去生存偏差): **{len(alive_raw)}** 个: {', '.join(alive_raw.index)}",
            (f"- 修正版(中性化): **{len(alive_neu)}** 个: {', '.join(alive_neu.index)}"
             if alive_neu is not None else "- 中性化未就绪"), ""]
-    md += ["## 3. 诚实解读",
+    # 按类型(family)分组对比: 哪种类型在修正后还活
+    fam_order = ["动量", "反转", "波动", "特质波动", "流动性", "技术面", "微观结构", "量价"]
+    def fam_rows(mat, alive_set):
+        rows = []
+        for fam in fam_order:
+            fs = [n for n in mat.index if FACTOR_FAMILY.get(n) == fam]
+            if not fs:
+                continue
+            ic = mat.loc[fs].mean(axis=0).mean()
+            n_alive = len([n for n in fs if n in alive_set])
+            rows.append(f"| {fam} | {len(fs)} | {ic:+.4f} | {n_alive}/{len(fs)} |")
+        return rows
+    md += ["## 3. 按因子类型(family)分组对比(哪种类型在修正后还活)", "",
+           "| 类型 | 因子数 | 全窗口平均IC | 2023-2026存活 |",
+           "|---|---|---|---|"]
+    md += ["**原始(去生存偏差)**"] + fam_rows(ic_raw, alive_raw)
+    if ic_neu is not None:
+        md += ["**中性化**"] + fam_rows(ic_neu, alive_neu)
+    md += ["", "## 4. 诚实解读",
            "- **生存者偏差放大了 IC 的两极**(好因子看起来更好、差因子看起来更差): 对实际可交易的正 IC 因子(反转/流动性族, 如 rev_5 0.0495→0.0470、amihud_20 0.0328→0.0291), 修正后 IC 普遍**低于**原1489快照, 证实其历史 alpha 被虚高; 对负 IC 因子则方向相反(原快照更负, 如 ivol_60 -0.0379→-0.0208), 同样是幸存者极端化. 原报告'绝对数字虚高'的怀疑被坐实, 现已修正.",
            "- **行业中性化再下一层**: 中性化后正 IC 因子进一步下降(rev_5 0.0470→0.0422、amihud_20 0.0291→0.0165), 说明这部分 alpha 实为行业暴露; 中性化去伪存真.",
            f"- **跨 regime 存活因子骤减**: 2023-2026 四年 IC 全为正的因子, 修正版仅 {len(alive_raw)} 个({', '.join(alive_raw.index) or '无'}), 中性化后 {len(alive_neu) if alive_neu is not None else 0} 个 —— 在去生存偏差+去行业暴露后, 几乎无因子稳健为正, 直接印证'因子有寿命、没有永恒圣杯'.",
