@@ -86,34 +86,50 @@ def _rebal_dates(idx, freq):
     return set(idx[p != p.shift(1)])
 
 
-def backtest(px, lookback=20, top_n=1, rebal="M", cost=0.0003, trend=False, ma=200):
+def backtest(px, lookback=20, top_n=1, rebal="M", cost=0.0003, trend=False, ma=200,
+             regime=False, regime_ma=120, bench="沪深300",
+             defensive=("国债ETF", "货币ETF", "上证国债指")):
+    """动量轮动回测.
+
+    trend : MA(ma) 个股闸门(权益跌破均线剔出排名)
+    regime: 市场状态总开关 —— 以 bench(宽基) 相对其 MA(regime_ma) 判定 risk-on/off.
+            risk-off 时整仓切防御资产(defensive 列表首个可用), 与个股 MA200 闸门正交叠加.
+            注: bench 在 regime_ma 窗口前 MA 为 NaN, 视为 risk-on(不误杀).
+    """
     eq_names = [c for c in px.columns if NAME2META[c][3]]
     ret = px.pct_change().fillna(0)
     sig = px.pct_change(lookback)
     ma_val = px.rolling(ma).mean() if trend else None
+    bench_s = px[bench] if (regime and bench in px.columns) else None
+    bench_ma = bench_s.rolling(regime_ma).mean() if bench_s is not None else None
+    da = next((a for a in defensive if a in px.columns), None)
     rb = _rebal_dates(px.index, rebal)
     weights = pd.DataFrame(0.0, index=px.index, columns=px.columns)
     w = pd.Series(0.0, index=px.columns)
     for i, d in enumerate(px.index):
         if (d in rb) or (i == 0):
-            s = sig.loc[d]
-            if trend:
-                above = (px.loc[d] > ma_val.loc[d]) | ma_val.loc[d].isna()
-                cands = [c for c in px.columns
-                         if (not NAME2META[c][3]) or bool(above[c])]
-                if not cands:
-                    cands = ["国债ETF"] if "国债ETF" in px.columns else list(px.columns)
+            roff = (bench_ma is not None) and (bench_s.loc[d] <= bench_ma.loc[d])
+            if roff and da is not None:
+                w = pd.Series(0.0, index=px.columns); w[da] = 1.0
             else:
-                cands = list(px.columns)
-            sc = s[cands].dropna().sort_values(ascending=False)
-            if len(sc) == 0:
-                w = pd.Series(0.0, index=px.columns)
-                if "货币ETF" in px.columns:
-                    w["货币ETF"] = 1.0
-            else:
-                top = sc.index[:top_n]
-                w = pd.Series(0.0, index=px.columns)
-                w[top] = 1.0 / top_n
+                s = sig.loc[d]
+                if trend:
+                    above = (px.loc[d] > ma_val.loc[d]) | ma_val.loc[d].isna()
+                    cands = [c for c in px.columns
+                             if (not NAME2META[c][3]) or bool(above[c])]
+                    if not cands:
+                        cands = ["国债ETF"] if "国债ETF" in px.columns else list(px.columns)
+                else:
+                    cands = list(px.columns)
+                sc = s[cands].dropna().sort_values(ascending=False)
+                if len(sc) == 0:
+                    w = pd.Series(0.0, index=px.columns)
+                    if "货币ETF" in px.columns:
+                        w["货币ETF"] = 1.0
+                else:
+                    top = sc.index[:top_n]
+                    w = pd.Series(0.0, index=px.columns)
+                    w[top] = 1.0 / top_n
         weights.loc[d] = w
     port = pd.Series(0.0, index=px.index)
     prev = pd.Series(0.0, index=px.columns)
@@ -153,20 +169,26 @@ def run_universe(px_full, univ_name):
           f"({len(px)/252:.1f}年, {len(cols)}资产) ===")
     rows = []
     eqs = {}
-    for gate in (False, True):
-        eq, port, _ = backtest(px, lookback=20, top_n=1, trend=gate, ma=200)
+    combos = [
+        (False, False, "基准(MA关/regime关)"),
+        (True,  False, "MA200开"),
+        (False, True,  "regime开(MA关)"),
+        (True,  True,  "MA200开+regime开"),
+    ]
+    for trend, regime, lab in combos:
+        eq, port, _ = backtest(px, lookback=20, top_n=1, trend=trend, ma=200,
+                               regime=regime, regime_ma=120)
         tot, cagr, dd, sh = metrics(eq, port)
-        tag = "MA200开" if gate else "MA200关"
-        rows.append((f"{univ_name} 动量L20top1 {tag}", tot, cagr, dd, sh))
-        eqs[f"{univ_name}|{'G' if gate else 'N'}"] = eq
-        print(f"  [bt] 动量L20top1 {tag}: CAGR={cagr:+.2%} MaxDD={dd:+.2%} Sharpe={sh:.2f}")
+        rows.append((f"{univ_name} 动量L20top1 {lab}", tot, cagr, dd, sh))
+        eqs[f"{univ_name}|{'T' if trend else 't'}{'R' if regime else 'r'}"] = eq
+        print(f"  [bt] 动量L20top1 {lab}: CAGR={cagr:+.2%} MaxDD={dd:+.2%} Sharpe={sh:.2f}")
         # 前后半段稳定性
         mid = px.index[len(px) // 2]
-        for lab, sl in (("前半", px.index < mid), ("后半", px.index >= mid)):
+        for slab, sl in (("前半", px.index < mid), ("后半", px.index >= mid)):
             e2 = eq.loc[sl]
             if len(e2) > 50:
                 t2, c2, d2, s2 = metrics(e2, port.loc[sl])
-                print(f"        {lab}: CAGR={c2:+.2%} MaxDD={d2:+.2%} Sharpe={s2:.2f}")
+                print(f"        {slab}: CAGR={c2:+.2%} MaxDD={d2:+.2%} Sharpe={s2:.2f}")
     # 基准
     eq_ew, _, _ = backtest(px, lookback=20, top_n=len(cols), trend=False)
     t, c, d, s = metrics(eq_ew, eq_ew.pct_change().fillna(0))
@@ -193,16 +215,18 @@ def main():
     df = pd.DataFrame(all_rows, columns=["策略", "累计收益", "年化", "最大回撤", "夏普"])
     print("\n", df.to_string(index=False))
 
-    # 图: 各宇宙最优(MA200开) vs 沪深300
-    plt.figure(figsize=(12, 6))
+    # 图: 各宇宙 4 种组合(MA×regime) 归一化净值
+    combo_style = [("tr", "-", "基准(MA关/regime关)"), ("Tr", "-", "MA200开"),
+                   ("tR", "--", "regime开(MA关)"), ("TR", "-.", "MA200开+regime开")]
+    plt.figure(figsize=(13, 6))
     for univ in ("CORE20Y", "RICH13", "RICH"):
-        for tag, ls in (("G", "-"), ("N", "--")):
-            k = f"{univ}|{tag}"
+        for key, ls, _ in combo_style:
+            k = f"{univ}|{key}"
             if k in all_eqs:
                 plt.plot(all_eqs[k].index, all_eqs[k] / all_eqs[k].iloc[0],
-                         ls, lw=1.1, label=f"{univ} {'MA200' if tag=='G' else 'plain'}")
-    plt.title("ETF Rotation - Normalized Equity (MA200 gate ON solid / OFF dashed)")
-    plt.legend(fontsize=7, ncol=3)
+                         ls, lw=1.0, label=f"{univ} {key}")
+    plt.title("ETF Rotation - Normalized Equity (MA x regime combos)")
+    plt.legend(fontsize=6, ncol=4)
     plt.grid(alpha=0.3)
     plt.tight_layout()
     plt.savefig(FIG, dpi=110)
@@ -221,6 +245,8 @@ def main():
     md += ["", "![净值](etf_rotation_ext_equity.png)", "",
            "## 诚实解读", "",
            "- **MA200 闸门的价值**: 对比每宇宙 'MA200关' vs 'MA200开' 的回撤与夏普, 看趋势保护是否真正降低回撤(尤其股灾/熊市段).",
+           "- **regime 总开关的价值**: 以沪深300 相对其 MA120 判定 risk-on/off, risk-off 时整仓切防御(国债ETF→货币ETF→上证国债指). "
+           "对比 'MA200开' vs 'MA200开+regime开' 看市场状态层是否进一步压低回撤、平滑收益; 若 regime 在长历史(CORE20Y 跨20年)显著降低最大回撤而不牺牲太多收益, 说明'什么状态用什么策略'有效.",
            "- **丰富宇宙 vs 7资产**: RICH 比初始7资产多了一堆低相关行业/商品/海外资产, 看夏普/回撤是否因多样性改善, 还是只是数字游戏.",
            "- **过拟合检验**: 若某配置 '前半' 远好于 '后半', 说明是样本内巧合(尤其 RICH 窗口短、资产多). CORE20Y 跨20年多regime, 更可信.",
            "- **纳指已排除**: 避免用单一高收益海外资产把整个轮动'带偏'成美股beta.", "",
