@@ -29,7 +29,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import oos_validation as OOS
 import oos_validation_corrected as M
 from factor_zoo_daily import build_factors, neutralize_factors, ALL_FACTOR_NAMES, daily_rank_ic
-from oos_wfa import rolling_wfa, wfa_fig, wfa_report_block, build_engine_inputs
+from oos_wfa import (rolling_wfa, wfa_fig, wfa_report_block, build_engine_inputs,
+                     run_wfa_bakeoff)
 
 SF_PANEL = Path("/workspace/stock_worm/data/ashare_daily_panel_survivorfree.parquet")
 ALIVE_PANEL = Path("/workspace/stock_worm/data/ashare_daily_panel.parquet")
@@ -73,6 +74,7 @@ def main():
     fwd, dates, codes = inp["fwd"], inp["dates"], inp["codes"]
     n_codes, cov = inp["n_codes"], inp["cov"]
     ind_map = inp["ind_map"]
+    mkt_level = inp["mkt_level"]
     print(f"[生产引擎] 面板 {n_codes}只 × {dates[0].date()}~{dates[-1].date()} | 分界 {SPLIT.date()}")
     print(f"因子 {len(ALL)}(技术{len(ALL_FACTOR_NAMES)}+基本面{len(FUND_NAMES)})/zarr 完成, 算逐日 IC ...", flush=True)
 
@@ -109,12 +111,18 @@ def main():
     sF_oos = OOS._stat_block("Frozen 生产(OOS)", slice_win(portF), bench_oos, rnd_oos)
     sR = OOS._stat_block("随机top-K基线", portR, bench_full, portR)
 
-    # ── 滚动 WFA 验证(对齐知乎文章 AlgoXpert Stage II) ──
-    wfa = rolling_wfa(zarr, fac_ic, ALL, fwd, dates, codes)
+    # ── 滚动 WFA 验证 + 配置层总闸烘焙(对齐知乎文章 AlgoXpert Stage II) ──
+    wfa = run_wfa_bakeoff(zarr, fac_ic, ALL, fwd, dates, codes, mkt_level)
     wfa_fig(wfa, WFA_FIG)
-    print(f"[WFA] 决策={wfa['decision']} 通过率={wfa['pass_rate']:.0%} "
-          f"({wfa['n_pass']}/{wfa['n_valid']}) 灾难性否决={wfa['catastrophic']} "
-          f"聚合Sharpe={wfa['agg']['sharpe']:+.3f} 超额={wfa['agg']['ex_sharpe']:+.3f}")
+    nog = wfa["无闸"]
+    print(f"[WFA] 无闸决策={nog['decision']} 通过率={nog['pass_rate']:.0%} "
+          f"({nog['n_pass']}/{nog['n_valid']}) 灾难性否决={nog['catastrophic']} "
+          f"聚合Sharpe={nog['agg']['sharpe']:+.3f} 超额={nog['agg']['ex_sharpe']:+.3f}")
+    for name, r in wfa.items():
+        if name == "无闸":
+            continue
+        print(f"[WFA:{name}] 决策={r['decision']} 通过率={r['pass_rate']:.0%} "
+              f"否决={r['n_veto']} Sharpe={r['agg']['sharpe']:+.3f} 回撤={r['agg']['maxdd']:+.2%}")
 
     # 持仓矩阵
     hmat = pd.DataFrame(0, index=portF.index, columns=codes, dtype=int)

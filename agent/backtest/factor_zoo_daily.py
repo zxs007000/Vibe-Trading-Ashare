@@ -150,9 +150,13 @@ def neutralize_factors(factors, ind_map, wide=None, size_proxy=False):
     内存策略(关键): 不做 stack(会造 9000×1847 长表撑爆 8G cgroup),
     改用 groupby(axis=1).mean() 直接对宽矩阵算行业均值再广播, 峰值 ~1 个因子宽矩阵.
     """
-    import resource as _rs
-    def _rss():
-        return _rs.getrusage(_rs.RUSAGE_SELF).ru_maxrss / 1024.0  # MB
+    try:
+        import resource as _rs
+        def _rss():
+            return _rs.getrusage(_rs.RUSAGE_SELF).ru_maxrss / 1024.0  # MB (Unix)
+    except ImportError:  # Windows 无 resource 模块
+        def _rss():
+            return 0.0
     codes = list(factors.values())[0].columns
     ind_arr = pd.Series([ind_map.get(c, np.nan) for c in codes], index=codes)
     valid = ind_arr.notna().values
