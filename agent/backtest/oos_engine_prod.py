@@ -29,6 +29,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import oos_validation as OOS
 import oos_validation_corrected as M
 from factor_zoo_daily import build_factors, neutralize_factors, ALL_FACTOR_NAMES, daily_rank_ic
+from oos_wfa import rolling_wfa, wfa_fig, wfa_report_block, build_engine_inputs
 
 SF_PANEL = Path("/workspace/stock_worm/data/ashare_daily_panel_survivorfree.parquet")
 ALIVE_PANEL = Path("/workspace/stock_worm/data/ashare_daily_panel.parquet")
@@ -43,6 +44,7 @@ OUT_DIR = Path(__file__).parent / "screen_results"
 HOLD_CSV = OUT_DIR / "OOS生产引擎_持仓.csv"
 FIG = OUT_DIR / "OOS生产引擎_净值.png"
 REP = OUT_DIR / "OOS生产引擎_报告.md"
+WFA_FIG = OUT_DIR / "OOS生产引擎_WFA.png"
 
 
 def backtest_with_holdings(signal_w, fwd_w, top_k=TOP_K, hold=HOLD, cost=COST):
@@ -66,33 +68,14 @@ def backtest_with_holdings(signal_w, fwd_w, top_k=TOP_K, hold=HOLD, cost=COST):
 
 def main():
     t0 = time.time()
-    w = M.load_wide_sf()
-    n_codes = w["close"].shape[1]
-    fwd = w["close"].pct_change(HOLD).shift(-HOLD).clip(-0.5, 0.5)
-    dates, codes = fwd.index, fwd.columns
+    inp = build_engine_inputs()
+    zarr, fac_ic, ALL = inp["zarr"], inp["fac_ic"], inp["ALL"]
+    fwd, dates, codes = inp["fwd"], inp["dates"], inp["codes"]
+    n_codes, cov = inp["n_codes"], inp["cov"]
+    ind_map = inp["ind_map"]
     print(f"[生产引擎] 面板 {n_codes}只 × {dates[0].date()}~{dates[-1].date()} | 分界 {SPLIT.date()}")
-
-    mp = pd.read_parquet(CSRC_MAP)
-    ind_map = dict(zip(mp["code"], mp["csrc_industry"]))
-    cov = sum(1 for v in ind_map.values() if pd.notna(v))
-
-    # 30 技术因子 + 行业中性
-    fac = build_factors(w); del w
-    fac = neutralize_factors(fac, ind_map)
-    # 并入全面板基本面(质量层, 未覆盖填0中性)
-    fund = pd.read_pickle(FUND_PARQUET)
-    for f in FUND_NAMES:
-        fac[f] = fund[f]
-    ALL = ALL_FACTOR_NAMES + FUND_NAMES
-    zarr = M.build_zarr(fac, ALL, dates, codes)
-    del fac
-    for f in FUND_NAMES:
-        zarr[f] = np.nan_to_num(zarr[f], nan=0.0)      # 未覆盖码填0=中性
     print(f"因子 {len(ALL)}(技术{len(ALL_FACTOR_NAMES)}+基本面{len(FUND_NAMES)})/zarr 完成, 算逐日 IC ...", flush=True)
 
-    fac_ic = {f: daily_rank_ic(pd.DataFrame(zarr[f], index=dates, columns=codes), fwd)
-              for f in ALL}
-    fac_ic = {f: s.reindex(dates) for f, s in fac_ic.items()}
     ic_mean = {f: fac_ic[f].rolling(TRAIL).mean() for f in ALL}
     ic_std = {f: fac_ic[f].rolling(TRAIL).std() for f in ALL}
     is_mask = dates < SPLIT
@@ -125,6 +108,13 @@ def main():
     sF = OOS._stat_block("Frozen 生产(全样本)", portF, bench_full, portR)
     sF_oos = OOS._stat_block("Frozen 生产(OOS)", slice_win(portF), bench_oos, rnd_oos)
     sR = OOS._stat_block("随机top-K基线", portR, bench_full, portR)
+
+    # ── 滚动 WFA 验证(对齐知乎文章 AlgoXpert Stage II) ──
+    wfa = rolling_wfa(zarr, fac_ic, ALL, fwd, dates, codes)
+    wfa_fig(wfa, WFA_FIG)
+    print(f"[WFA] 决策={wfa['decision']} 通过率={wfa['pass_rate']:.0%} "
+          f"({wfa['n_pass']}/{wfa['n_valid']}) 灾难性否决={wfa['catastrophic']} "
+          f"聚合Sharpe={wfa['agg']['sharpe']:+.3f} 超额={wfa['agg']['ex_sharpe']:+.3f}")
 
     # 持仓矩阵
     hmat = pd.DataFrame(0, index=portF.index, columns=codes, dtype=int)
@@ -184,7 +174,11 @@ def main():
           "regime 信号的价值在资产配置层(ETF轮动总闸), 不在截面选股层. 故本引擎'冻结IS胜者'而非'动态切因子'.",
           "- **风险提示**: 单一 OOS regime(2024-09起约96%为牛市)使 OOS 段绩效提示性非结论性; "
           "因子有寿命, 实盘应定期(如年度)用滚动 IS 窗口重冻结因子集与权重(本引擎已参数化, 改 SPLIT/TRAIL 即可重训).",
-          f"*生成于 OOS 生产引擎, 耗时 {time.time()-t0:.1f}s*"]
+          ]
+
+    md += wfa_report_block(wfa, n_codes, cov)
+
+    md += [f"*生成于 OOS 生产引擎, 耗时 {time.time()-t0:.1f}s*"]
     REP.write_text("\n".join(md), encoding="utf-8")
     print(f"\n报告: {REP}\n图: {FIG}\n持仓CSV: {HOLD_CSV}")
     print(f"\n[绩效] 全样本 Sharpe={sF['sharpe']:+.3f} 年化={sF['ann']:+.2%} 最大回撤={sF['maxdd']:+.2%} 超额={sF['ex_sharpe']:+.3f}")
