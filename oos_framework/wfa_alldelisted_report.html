@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>含退市股全数据湖 WFA 报告 — 定稿 anti 闸门</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; background: #fafafa; color: #2c2c2a; margin: 0; padding: 24px; }
+  .wrap { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+  .sub { color: #5f5e5a; font-size: 13px; margin-bottom: 24px; }
+  .card { background: #fff; border: 0.5px solid #e2e2dd; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; }
+  h2 { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .mc { background: #f6f6f3; border-radius: 8px; padding: 12px; }
+  .mc .lab { font-size: 12px; color: #5f5e5a; }
+  .mc .val { font-size: 22px; font-weight: 600; margin-top: 4px; }
+  .mc .note { font-size: 11px; color: #888780; margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 10px; border-bottom: 0.5px solid #ecece8; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: #5f5e5a; font-weight: 500; }
+  .good { color: #3b6d11; } .bad { color: #a32d2d; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: #5f5e5a; margin-bottom: 8px; }
+  .legend span { display: flex; align-items: center; gap: 4px; }
+  .sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .chartbox { position: relative; width: 100%; height: 320px; }
+  .hl { background: #f4f0ff; border: 2px solid #534ab7; border-radius: 12px; }
+  .tag { display: inline-block; background: #eef0fb; color: #185fac; font-size: 11px; padding: 2px 8px; border-radius: 6px; }
+  .concl { font-size: 13px; line-height: 1.7; }
+  .concl b { font-weight: 600; }
+  .pb { font-size: 11px; color: #888780; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>含退市股全数据湖 WFA — 定稿 anti 闸门</h1>
+  <div class="sub">2010-01-01 → 2026-07-14 · 14 折滚动 · 上证综指判熊 · 底仓 50% / 上限 75% · 5333 只股票（含 286 只退市股） · 76 因子 · top 30% / 持有 5 日 / 单边成本 0.1%</div>
+
+  <div class="card hl">
+    <h2>四条策略对照</h2>
+    <div class="grid4">
+      <div class="mc"><div class="lab">A · anti（含退市）</div><div class="val">12.24%</div><div class="note">Sharpe 0.615 · 回撤 -37.8% · 胜率 55.7%</div></div>
+      <div class="mc"><div class="lab">B · anti（仅存活）</div><div class="val">13.39%</div><div class="note">Sharpe 0.650 · 回撤 -38.8% · 胜率 56.3%</div></div>
+      <div class="mc"><div class="lab">C · 无择时100%（含退市）</div><div class="val">14.66%</div><div class="note">Sharpe 0.630 · 回撤 -45.5% · 胜率 56.1%</div></div>
+      <div class="mc"><div class="lab">D · 无择时100%（仅存活）</div><div class="val">16.53%</div><div class="note">Sharpe 0.680 · 回撤 -43.7% · 胜率 56.7%</div></div>
+    </div>
+    <p class="pb" style="margin:10px 0 0;">基准（等权全A）：含退市 11.54% / Sharpe 0.522 / 回撤 -53.5%；仅存活 12.47% / Sharpe 0.551 / 回撤 -51.7%。anti（含退市）跑赢基准 +0.7% 年化，回撤少 15.7 个百分点。</p>
+  </div>
+
+  <div class="card">
+    <h2>年化收益与 Sharpe</h2>
+    <div class="legend">
+      <span><span class="sw" style="background:#534ab7;"></span>A anti 含退市（定稿）</span>
+      <span><span class="sw" style="background:#7f77dd;"></span>B anti 仅存活</span>
+      <span><span class="sw" style="background:#0f6e56;"></span>C 无择时 含退市</span>
+      <span><span class="sw" style="background:#1d9e75;"></span>D 无择时 仅存活</span>
+    </div>
+    <div class="chartbox"><canvas id="c1" role="img" aria-label="年化收益与Sharpe对比"></canvas></div>
+  </div>
+
+  <div class="card">
+    <h2>最大回撤：闸门是“近乎免费的保险”</h2>
+    <p class="pb" style="margin:0 0 12px;">anti 比纯无择时少赚 2.4%（含退市）/ 3.1%（仅存活）年化，但把回撤从 -45.5% 压到 -37.8%（少 7.7 个点）。这是用一点收益换大幅减回撤的权衡——而你定的 50% 底仓正是这个权衡点。</p>
+    <div class="chartbox"><canvas id="c2" role="img" aria-label="最大回撤对比"></canvas></div>
+  </div>
+
+  <div class="card">
+    <h2>逐折 Sharpe（全量含退市 vs 仅存活）</h2>
+    <div class="legend">
+      <span><span class="sw" style="background:#534ab7;"></span>anti 含退市</span>
+      <span><span class="sw" style="background:#1d9e75;"></span>anti 仅存活</span>
+    </div>
+    <div class="chartbox"><canvas id="c3" role="img" aria-label="逐折Sharpe折线"></canvas></div>
+    <p class="pb" style="margin:10px 0 0;">注意 2024 折：含退市 -0.16、仅存活 +0.115 —— 退市股当年拖累明显；2026 为部分年（截至 7-14）两者皆负。其余年份两线高度吻合，说明幸存者偏差对择时稳定性影响有限。</p>
+  </div>
+
+  <div class="card">
+    <h2>幸存者偏差实测（含退市 − 仅存活）</h2>
+    <table>
+      <tr><th>维度</th><th>anti 偏差</th><th>无择时 偏差</th><th>含义</th></tr>
+      <tr><td>年化收益</td><td class="bad">-1.15%</td><td class="bad">-1.87%</td><td>旧“仅存活”回测虚高了约 1~2%</td></tr>
+      <tr><td>Sharpe</td><td class="bad">-0.035</td><td class="bad">-0.050</td><td>含退市后风险调整收益更真实</td></tr>
+      <tr><td>累计收益</td><td class="bad">-0.65x</td><td class="bad">-1.42x</td><td>16 年累计少赚 0.65~1.4 倍</td></tr>
+    </table>
+    <p class="pb" style="margin:10px 0 0;">结论：退市股确实在拖累收益，所以“含退市”的数字才是诚实版本。但偏差幅度温和（~1-2%/年），不构成颠覆性影响——定稿策略在更严苛的口径下依然成立。</p>
+  </div>
+
+  <div class="card">
+    <h2>结论</h2>
+    <div class="concl">
+      <p>1. <b>定稿 anti 闸门稳健</b>：在含 286 只退市股的全数据湖 WFA 下，Sharpe <b>0.615</b>、年化 <b>12.24%</b>、最大回撤 <b>-37.8%</b>，跑赢等权全A基准（Sharpe 0.522 / 回撤 -53.5%）。无前视、无幸存者美化。</p>
+      <p>2. <b>闸门价值=回撤保险</b>：相比纯无择时100%，anti 少赚 2.4% 年化，但把回撤砍掉 7.7 个点（-45.5%→-37.8%）。50% 底仓是你主动选的权衡点——回撤控制明显更好，收益代价可接受。</p>
+      <p>3. <b>幸存者偏差温和</b>：旧“仅存活”回测虚高约 1~2%/年。含退市后的诚实数字依然优于基准，策略没有“靠剔除输家”伪装出来。</p>
+      <p>4. <b>待解决</b>：2024 折（训练窗 2021-2023 连熊）含退市 Sharpe -0.16 微亏，提示 3 年训练窗在行情切换年可能失效。建议把训练窗拉长到 5-8 年、或牛熊分开冻结后再验一次稳定性。</p>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const cfg = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+const labels = ['A anti 含退市','B anti 仅存活','C 无择时 含退市','D 无择时 仅存活'];
+const colors = ['#534ab7','#7f77dd','#0f6e56','#1d9e75'];
+
+new Chart(document.getElementById('c1'), {
+  type: 'bar',
+  data: { labels, datasets: [
+    { label:'年化%', data:[12.24,13.39,14.66,16.53], backgroundColor: colors },
+    { label:'Sharpe', data:[0.615,0.650,0.630,0.680], backgroundColor: '#888780', yAxisID:'y2' }
+  ]},
+  options: { ...cfg, scales: {
+    y: { title:{display:true,text:'年化收益 %'}, position:'left' },
+    y2: { title:{display:true,text:'Sharpe'}, position:'right', grid:{drawOnChartArea:false}, suggestedMin:0 }
+  }}
+});
+
+new Chart(document.getElementById('c2'), {
+  type: 'bar',
+  data: { labels, datasets: [{ label:'最大回撤 %', data:[-37.76,-38.81,-45.45,-43.66], backgroundColor: colors }] },
+  options: { ...cfg, scales: { y: { title:{display:true,text:'最大回撤 %'} } } }
+});
+
+const folds = ['2013','2014','2015','2016','2017','2018','2019','2020','2021','2022','2023','2024','2025','2026'];
+const sf = [0.813,2.095,1.721,0.472,-0.045,-0.995,1.265,0.818,0.863,-0.839,-0.388,-0.16,2.134,-0.548];
+const ss = [1.097,1.968,1.842,0.554,-0.288,-0.998,1.292,0.822,0.972,-0.773,-0.236,0.115,2.163,-0.772];
+new Chart(document.getElementById('c3'), {
+  type: 'line',
+  data: { labels: folds, datasets: [
+    { label:'anti 含退市', data: sf, borderColor:'#534ab7', backgroundColor:'#534ab7', tension:0.3 },
+    { label:'anti 仅存活', data: ss, borderColor:'#1d9e75', backgroundColor:'#1d9e75', tension:0.3, borderDash:[5,4] }
+  ]},
+  options: { ...cfg, scales: { x: { ticks:{ autoSkip:false, maxRotation:45 } }, y: { title:{display:true,text:'OOS Sharpe'} } } }
+});
+</script>
+</body>
+</html>

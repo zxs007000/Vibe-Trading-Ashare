@@ -1,0 +1,195 @@
+{
+  "config": {
+    "start": "2018-01-01",
+    "end": "2026-07-14",
+    "market_index": "sh000001",
+    "stock_cap": 0.75,
+    "bear_floor": 0.5,
+    "train_years": 1,
+    "n_folds": 8,
+    "window_type": "rolling",
+    "top_k": 0.3,
+    "hold": 5,
+    "cost": 0.001,
+    "delist_filter": true,
+    "delist_thr": 0.5,
+    "n_stocks_full": 5293,
+    "n_delisted": 251,
+    "n_stocks_surv": 5042,
+    "n_factors_full": 76,
+    "n_factors_surv": 76,
+    "method": "WFA: 因子全面板算一次, 每折 split_date 重算 IS_IC/冻结(训练窗=train_years 真实截断), 测试窗=真实OOS; 双管线(全量含退市 / 仅存活子集重建因子)对照幸存者偏差; 可选退市风险过滤(f_delist_risk>=阈值 剔除)",
+    "delist_source": "数据湖 daily/ 已含退市股; 风险因子=面值(股价~1元)+困境深跌+流动性枯竭+监管重罚衰减"
+  },
+  "results": {
+    "A_anti_full_incl_delist": {
+      "n_periods": 368,
+      "years": 7.3,
+      "ann_return": 0.0883,
+      "ann_benchmark": 0.0876,
+      "cum_return": 0.855,
+      "cum_benchmark": 0.846,
+      "sharpe": 0.508,
+      "sharpe_benchmark": 0.466,
+      "max_drawdown": -0.3516,
+      "max_drawdown_benchmark": -0.3584,
+      "win_rate": 0.543
+    },
+    "B_anti_surv_only": {
+      "n_periods": 368,
+      "years": 7.3,
+      "ann_return": 0.0983,
+      "ann_benchmark": 0.0994,
+      "cum_return": 0.9835,
+      "cum_benchmark": 0.9981,
+      "sharpe": 0.552,
+      "sharpe_benchmark": 0.511,
+      "max_drawdown": -0.3475,
+      "max_drawdown_benchmark": -0.3477,
+      "win_rate": 0.538
+    },
+    "C_static_full_incl_delist": {
+      "n_periods": 368,
+      "years": 7.3,
+      "ann_return": 0.1154,
+      "ann_benchmark": 0.0876,
+      "cum_return": 1.2192,
+      "cum_benchmark": 0.846,
+      "sharpe": 0.59,
+      "sharpe_benchmark": 0.466,
+      "max_drawdown": -0.3199,
+      "max_drawdown_benchmark": -0.3584,
+      "win_rate": 0.549
+    },
+    "D_static_surv_only": {
+      "n_periods": 368,
+      "years": 7.3,
+      "ann_return": 0.1303,
+      "ann_benchmark": 0.0994,
+      "cum_return": 1.446,
+      "cum_benchmark": 0.9981,
+      "sharpe": 0.648,
+      "sharpe_benchmark": 0.511,
+      "max_drawdown": -0.3172,
+      "max_drawdown_benchmark": -0.3477,
+      "win_rate": 0.549
+    }
+  },
+  "survivorship_bias": {
+    "anti_ann_delta(full_minus_surv)": {
+      "ann_return": -0.01,
+      "sharpe": -0.044,
+      "max_drawdown": -0.0041,
+      "cum_return": -0.1285
+    },
+    "anti_sharpe_delta(full_minus_surv)": -0.044,
+    "static_ann_delta(full_minus_surv)": {
+      "ann_return": -0.0149,
+      "sharpe": -0.058,
+      "max_drawdown": -0.0027,
+      "cum_return": -0.2268
+    },
+    "static_sharpe_delta(full_minus_surv)": -0.058,
+    "interpretation": "含退市股 − 仅存活股 = 幸存者偏差对策略的净影响(正数=退市股拖累, 负数/近零=原回测已被幸存者偏差虚高, 含退市后更真实)"
+  },
+  "folds": [
+    {
+      "fold": 2019,
+      "n_frozen_full": 47,
+      "sharpe_full": 1.278,
+      "ann_full": 0.2766,
+      "mdd_full": -0.1581,
+      "n_frozen_surv": 40,
+      "sharpe_surv": 1.368,
+      "ann_surv": 0.2966,
+      "mdd_surv": -0.1462
+    },
+    {
+      "fold": 2020,
+      "n_frozen_full": 47,
+      "sharpe_full": 0.848,
+      "ann_full": 0.2059,
+      "mdd_full": -0.1049,
+      "n_frozen_surv": 43,
+      "sharpe_surv": 0.91,
+      "ann_surv": 0.2243,
+      "mdd_surv": -0.0988
+    },
+    {
+      "fold": 2021,
+      "n_frozen_full": 47,
+      "sharpe_full": 0.88,
+      "ann_full": 0.1305,
+      "mdd_full": -0.0722,
+      "n_frozen_surv": 43,
+      "sharpe_surv": 1.081,
+      "ann_surv": 0.1646,
+      "mdd_surv": -0.0699
+    },
+    {
+      "fold": 2022,
+      "n_frozen_full": 47,
+      "sharpe_full": -0.688,
+      "ann_full": -0.1331,
+      "mdd_full": -0.1943,
+      "n_frozen_surv": 36,
+      "sharpe_surv": -0.724,
+      "ann_surv": -0.1408,
+      "mdd_surv": -0.1957
+    },
+    {
+      "fold": 2023,
+      "n_frozen_full": 48,
+      "sharpe_full": -0.144,
+      "ann_full": -0.0206,
+      "mdd_full": -0.1142,
+      "n_frozen_surv": 37,
+      "sharpe_surv": -0.097,
+      "ann_surv": -0.016,
+      "mdd_surv": -0.1163
+    },
+    {
+      "fold": 2024,
+      "n_frozen_full": 35,
+      "sharpe_full": 0.17,
+      "ann_full": 0.0047,
+      "mdd_full": -0.2066,
+      "n_frozen_surv": 32,
+      "sharpe_surv": 0.215,
+      "ann_surv": 0.0192,
+      "mdd_surv": -0.2065
+    },
+    {
+      "fold": 2025,
+      "n_frozen_full": 38,
+      "sharpe_full": 2.215,
+      "ann_full": 0.4138,
+      "mdd_full": -0.0877,
+      "n_frozen_surv": 38,
+      "sharpe_surv": 2.211,
+      "ann_surv": 0.4139,
+      "mdd_surv": -0.0885
+    },
+    {
+      "fold": 2026,
+      "n_frozen_full": 41,
+      "sharpe_full": -0.862,
+      "ann_full": -0.1873,
+      "mdd_full": -0.1654,
+      "n_frozen_surv": 41,
+      "sharpe_surv": -0.879,
+      "ann_surv": -0.1901,
+      "mdd_surv": -0.1671
+    }
+  ],
+  "gate_value": {
+    "anti_vs_static_full_incl_delist": {
+      "ann_drag": 0.0271,
+      "sharpe_drag": 0.082
+    },
+    "anti_vs_static_surv_only": {
+      "ann_drag": 0.032,
+      "sharpe_drag": 0.096
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "note": "公平对照: 同选股/同防御/同成本, 仅仓位路径不同, 隔离择时贡献",
+  "oos_period": {
+    "start": "2024-06-03",
+    "end": "2026-07-10",
+    "n_periods": 103
+  },
+  "A_abc_gate": {
+    "annual_return": -0.0217,
+    "annual_vol": 0.1322,
+    "sharpe": -0.1639,
+    "max_drawdown": -0.1369,
+    "cumulative_return": -0.06
+  },
+  "B_const_75": {
+    "annual_return": 0.0299,
+    "annual_vol": 0.1222,
+    "sharpe": 0.2446,
+    "max_drawdown": -0.1067,
+    "cumulative_return": 0.0473
+  },
+  "C_const_100": {
+    "annual_return": 0.0445,
+    "annual_vol": 0.162,
+    "sharpe": 0.275,
+    "max_drawdown": -0.1238,
+    "cumulative_return": 0.0673
+  },
+  "D_broad_bench": {
+    "annual_return": 0.0793,
+    "annual_vol": 0.194,
+    "sharpe": 0.4086,
+    "max_drawdown": -0.1834,
+    "cumulative_return": 0.1334
+  },
+  "timing_contribution_A_minus_B": {
+    "sharpe": -0.4085,
+    "annual_return": -0.0516
+  }
+}

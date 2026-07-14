@@ -1,0 +1,274 @@
+{
+  "method": "regular backtest + MC validation (project backtest.validation)",
+  "gate_mode": "abc",
+  "full_period": {
+    "start": "2023-05-04",
+    "end": "2026-07-08",
+    "n_periods": 155
+  },
+  "oos_period": {
+    "start": "2024-06-03",
+    "end": "2026-07-10",
+    "n_periods": 103
+  },
+  "periods_per_year": 50.4,
+  "n_frozen": 48,
+  "initial_capital": 1000000.0,
+  "regime_diagnostic": {
+    "bull_frac": 0.6903,
+    "bear_frac": 0.2645,
+    "crash_frac": 0.0452,
+    "defensive_frac": 0.3097,
+    "avg_stock_weight": 0.6535,
+    "wave_state_dist": {
+      "bull": 103,
+      "A": 40,
+      "C": 12
+    }
+  },
+  "note": "ABC波浪闸门(多信号加权共识牛熊); 震荡态用日线因子; 不使用分钟数据湖 (用户决策 2026-07-14)",
+  "regular_backtest": {
+    "abc_gate": {
+      "annual_return": -0.0033,
+      "annual_vol": 0.1067,
+      "sharpe": -0.0312,
+      "max_drawdown": -0.1135,
+      "cumulative_return": -0.0181
+    },
+    "benchmark": {
+      "annual_return": 0.0793,
+      "annual_vol": 0.194,
+      "sharpe": 0.4086,
+      "max_drawdown": -0.1834,
+      "cumulative_return": 0.1334
+    }
+  },
+  "mc_full_period": {
+    "bootstrap": {
+      "abc_gate": {
+        "observed_sharpe": -0.0136,
+        "ci_lower": -1.3176,
+        "ci_upper": 0.9339,
+        "median_sharpe": -0.0418,
+        "prob_positive": 0.4705,
+        "confidence": 0.95,
+        "n_bootstrap": 2000
+      },
+      "benchmark": {
+        "observed_sharpe": 0.1719,
+        "ci_lower": -1.1708,
+        "ci_upper": 1.0497,
+        "median_sharpe": 0.1474,
+        "prob_positive": 0.6015,
+        "confidence": 0.95,
+        "n_bootstrap": 2000
+      }
+    },
+    "monte_carlo": {
+      "actual_sharpe": 0.1164,
+      "actual_max_dd": -0.0966,
+      "p_value_sharpe": 0.757,
+      "p_value_max_dd": 0.0,
+      "simulated_sharpe_mean": 0.1564,
+      "simulated_sharpe_std": 0.1203,
+      "simulated_sharpe_p5": 0.01,
+      "simulated_sharpe_p95": 0.2818,
+      "n_simulations": 2000,
+      "n_trades": 155
+    }
+  },
+  "mc_oos": {
+    "bootstrap": {
+      "abc_gate": {
+        "observed_sharpe": 0.1494,
+        "ci_lower": -1.3855,
+        "ci_upper": 1.4631,
+        "median_sharpe": 0.1208,
+        "prob_positive": 0.5695,
+        "confidence": 0.95,
+        "n_bootstrap": 2000
+      },
+      "benchmark": {
+        "observed_sharpe": 0.4647,
+        "ci_lower": -1.1272,
+        "ci_upper": 1.6297,
+        "median_sharpe": 0.453,
+        "prob_positive": 0.738,
+        "confidence": 0.95,
+        "n_bootstrap": 2000
+      }
+    },
+    "monte_carlo": {
+      "actual_sharpe": 0.4544,
+      "actual_max_dd": -0.1058,
+      "p_value_sharpe": 0.0055,
+      "p_value_max_dd": 0.1055,
+      "simulated_sharpe_mean": 0.0507,
+      "simulated_sharpe_std": 0.1618,
+      "simulated_sharpe_p5": -0.2042,
+      "simulated_sharpe_p95": 0.2681,
+      "n_simulations": 2000,
+      "n_trades": 103
+    }
+  },
+  "regime_segmented": {
+    "note": "全周期2023-05~2026-07按市场状态(bull/bear/crash)切分; 含2023-2024下跌段",
+    "metrics": {
+      "bull": {
+        "abc_gate": {
+          "annual_return": -0.0302,
+          "sharpe": -0.1988,
+          "max_drawdown": -0.1226,
+          "cumulative_return": -0.0838,
+          "annual_vol": 0.152
+        },
+        "benchmark": {
+          "annual_return": -0.0354,
+          "sharpe": -0.1389,
+          "max_drawdown": -0.2083,
+          "cumulative_return": -0.1281,
+          "annual_vol": 0.2548
+        },
+        "n_periods": 107
+      },
+      "bear": {
+        "abc_gate": {
+          "annual_return": 0.1049,
+          "sharpe": 1.3139,
+          "max_drawdown": -0.0297,
+          "cumulative_return": 0.0862,
+          "annual_vol": 0.0798
+        },
+        "benchmark": {
+          "annual_return": 0.2032,
+          "sharpe": 1.3658,
+          "max_drawdown": -0.0825,
+          "cumulative_return": 0.1691,
+          "annual_vol": 0.1488
+        },
+        "n_periods": 41
+      },
+      "crash": {
+        "abc_gate": {
+          "annual_return": -0.14,
+          "sharpe": -2.5762,
+          "max_drawdown": -0.0313,
+          "cumulative_return": -0.0195,
+          "annual_vol": 0.0544
+        },
+        "benchmark": {
+          "annual_return": 0.1867,
+          "sharpe": 1.3633,
+          "max_drawdown": -0.0316,
+          "cumulative_return": 0.0251,
+          "annual_vol": 0.137
+        },
+        "n_periods": 7
+      }
+    },
+    "mc": {
+      "bull": {
+        "bootstrap": {
+          "abc_gate": {
+            "observed_sharpe": -0.2235,
+            "ci_lower": -2.097,
+            "ci_upper": 0.9369,
+            "median_sharpe": -0.2799,
+            "prob_positive": 0.3625,
+            "confidence": 0.95,
+            "n_bootstrap": 2000
+          },
+          "benchmark": {
+            "observed_sharpe": -0.1347,
+            "ci_lower": -2.2194,
+            "ci_upper": 0.9629,
+            "median_sharpe": -0.2156,
+            "prob_positive": 0.3905,
+            "confidence": 0.95,
+            "n_bootstrap": 2000
+          }
+        },
+        "monte_carlo": {
+          "actual_sharpe": -0.3142,
+          "actual_max_dd": -0.1191,
+          "p_value_sharpe": 0.7575,
+          "p_value_max_dd": 0.0025,
+          "simulated_sharpe_mean": -0.2582,
+          "simulated_sharpe_std": 0.193,
+          "simulated_sharpe_p5": -0.4606,
+          "simulated_sharpe_p95": -0.0747,
+          "n_simulations": 2000,
+          "n_trades": 107
+        }
+      },
+      "bear": {
+        "bootstrap": {
+          "abc_gate": {
+            "observed_sharpe": 1.3428,
+            "ci_lower": -0.9885,
+            "ci_upper": 3.7009,
+            "median_sharpe": 1.3745,
+            "prob_positive": 0.883,
+            "confidence": 0.95,
+            "n_bootstrap": 2000
+          },
+          "benchmark": {
+            "observed_sharpe": 1.2437,
+            "ci_lower": -1.05,
+            "ci_upper": 3.5173,
+            "median_sharpe": 1.2374,
+            "prob_positive": 0.855,
+            "confidence": 0.95,
+            "n_bootstrap": 2000
+          }
+        },
+        "monte_carlo": {
+          "actual_sharpe": 3.0675,
+          "actual_max_dd": -0.0295,
+          "p_value_sharpe": 0.473,
+          "p_value_max_dd": 0.1445,
+          "simulated_sharpe_mean": 3.0554,
+          "simulated_sharpe_std": 0.4111,
+          "simulated_sharpe_p5": 2.4683,
+          "simulated_sharpe_p95": 4.0424,
+          "n_simulations": 2000,
+          "n_trades": 41
+        }
+      },
+      "crash": {
+        "bootstrap": {
+          "abc_gate": {
+            "observed_sharpe": -9.684,
+            "ci_lower": -29.6394,
+            "ci_upper": -5.4156,
+            "median_sharpe": -9.9181,
+            "prob_positive": 0.0,
+            "confidence": 0.95,
+            "n_bootstrap": 2000
+          },
+          "benchmark": {
+            "observed_sharpe": -0.0768,
+            "ci_lower": -10.7142,
+            "ci_upper": 6.6547,
+            "median_sharpe": -0.1379,
+            "prob_positive": 0.4685,
+            "confidence": 0.95,
+            "n_bootstrap": 2000
+          }
+        },
+        "monte_carlo": {
+          "actual_sharpe": -21.592,
+          "actual_max_dd": -0.0313,
+          "p_value_sharpe": 0.889,
+          "p_value_max_dd": 0.973,
+          "simulated_sharpe_mean": -7.2011,
+          "simulated_sharpe_std": 5.7868,
+          "simulated_sharpe_p5": -21.7018,
+          "simulated_sharpe_p95": -3.4663,
+          "n_simulations": 2000,
+          "n_trades": 7
+        }
+      }
+    }
+  }
+}

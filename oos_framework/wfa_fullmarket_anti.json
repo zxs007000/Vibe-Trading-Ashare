@@ -1,0 +1,162 @@
+{
+  "config": {
+    "start": "2010-01-01",
+    "end": "2026-07-14",
+    "market_index": "sh000001",
+    "stock_cap": 0.75,
+    "train_years": 3,
+    "n_folds": 14,
+    "n_stocks": 5333,
+    "n_factors": 76,
+    "top_k": 0.3,
+    "hold": 5,
+    "cost": 0.001,
+    "method": "rolling WFA: 因子全面板算一次, 每折 split_date 重算 IS_IC/冻结, 测试窗=真实OOS"
+  },
+  "results": {
+    "A_anti_75_shindex": {
+      "n_periods": 661,
+      "years": 13.12,
+      "ann_return": 0.1224,
+      "ann_benchmark": 0.1154,
+      "cum_return": 3.5445,
+      "cum_benchmark": 3.1891,
+      "sharpe": 0.615,
+      "sharpe_benchmark": 0.522,
+      "max_drawdown": -0.3776,
+      "max_drawdown_benchmark": -0.5351,
+      "win_rate": 0.557
+    },
+    "B_no_timing_100": {
+      "n_periods": 661,
+      "years": 13.12,
+      "ann_return": 0.1466,
+      "ann_benchmark": 0.1154,
+      "cum_return": 5.0171,
+      "cum_benchmark": 3.1891,
+      "sharpe": 0.63,
+      "sharpe_benchmark": 0.522,
+      "max_drawdown": -0.4545,
+      "max_drawdown_benchmark": -0.5351,
+      "win_rate": 0.561
+    }
+  },
+  "folds": [
+    {
+      "fold": 2013,
+      "n_frozen": 54,
+      "ann": 0.1314,
+      "sharpe": 0.813,
+      "mdd": -0.105,
+      "win": 0.562
+    },
+    {
+      "fold": 2014,
+      "n_frozen": 50,
+      "ann": 0.4767,
+      "sharpe": 2.095,
+      "mdd": -0.0862,
+      "win": 0.612
+    },
+    {
+      "fold": 2015,
+      "n_frozen": 50,
+      "ann": 0.9785,
+      "sharpe": 1.721,
+      "mdd": -0.3776,
+      "win": 0.673
+    },
+    {
+      "fold": 2016,
+      "n_frozen": 50,
+      "ann": 0.086,
+      "sharpe": 0.472,
+      "mdd": -0.0772,
+      "win": 0.633
+    },
+    {
+      "fold": 2017,
+      "n_frozen": 50,
+      "ann": -0.0238,
+      "sharpe": -0.045,
+      "mdd": -0.1856,
+      "win": 0.551
+    },
+    {
+      "fold": 2018,
+      "n_frozen": 52,
+      "ann": -0.1997,
+      "sharpe": -0.995,
+      "mdd": -0.2395,
+      "win": 0.49
+    },
+    {
+      "fold": 2019,
+      "n_frozen": 49,
+      "ann": 0.2728,
+      "sharpe": 1.265,
+      "mdd": -0.1583,
+      "win": 0.612
+    },
+    {
+      "fold": 2020,
+      "n_frozen": 50,
+      "ann": 0.1971,
+      "sharpe": 0.818,
+      "mdd": -0.1055,
+      "win": 0.449
+    },
+    {
+      "fold": 2021,
+      "n_frozen": 50,
+      "ann": 0.1326,
+      "sharpe": 0.863,
+      "mdd": -0.0726,
+      "win": 0.571
+    },
+    {
+      "fold": 2022,
+      "n_frozen": 50,
+      "ann": -0.1579,
+      "sharpe": -0.839,
+      "mdd": -0.1939,
+      "win": 0.49
+    },
+    {
+      "fold": 2023,
+      "n_frozen": 50,
+      "ann": -0.0434,
+      "sharpe": -0.388,
+      "mdd": -0.1258,
+      "win": 0.51
+    },
+    {
+      "fold": 2024,
+      "n_frozen": 50,
+      "ann": -0.0836,
+      "sharpe": -0.16,
+      "mdd": -0.1917,
+      "win": 0.449
+    },
+    {
+      "fold": 2025,
+      "n_frozen": 49,
+      "ann": 0.4231,
+      "sharpe": 2.134,
+      "mdd": -0.1033,
+      "win": 0.612
+    },
+    {
+      "fold": 2026,
+      "n_frozen": 48,
+      "ann": -0.1221,
+      "sharpe": -0.548,
+      "mdd": -0.1471,
+      "win": 0.6
+    }
+  ],
+  "gate_value": {
+    "ann_drag": 0.0242,
+    "sharpe_drag": 0.015
+  }
+}

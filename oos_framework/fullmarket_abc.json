@@ -1,0 +1,69 @@
+{
+  "config": {
+    "start": "2010-01-01",
+    "end": "2023-12-31",
+    "market_index": "sh000001",
+    "n_stocks": 5302,
+    "n_factors": 76,
+    "n_frozen": 50,
+    "top_k": 0.3,
+    "hold": 5,
+    "cost": 0.001,
+    "trend_w": 120,
+    "dd_thr": -0.1
+  },
+  "results": {
+    "A_abc_shindex": {
+      "n_periods": 681,
+      "years": 13.51,
+      "ann_return": 0.0886,
+      "ann_benchmark": 0.0781,
+      "cum_return": 2.1505,
+      "cum_benchmark": 1.7634,
+      "sharpe": 0.499,
+      "sharpe_benchmark": 0.412,
+      "max_drawdown": -0.4253,
+      "max_drawdown_benchmark": -0.5661,
+      "win_rate": 0.558
+    },
+    "B_anti_allsa": {
+      "n_periods": 678,
+      "years": 13.45,
+      "ann_return": 0.1083,
+      "ann_benchmark": 0.0713,
+      "cum_return": 2.9897,
+      "cum_benchmark": 1.5267,
+      "sharpe": 0.81,
+      "sharpe_benchmark": 0.39,
+      "max_drawdown": -0.3224,
+      "max_drawdown_benchmark": -0.5661,
+      "win_rate": 0.565
+    },
+    "C_abc_static100": {
+      "n_periods": 681,
+      "years": 13.51,
+      "ann_return": 0.1275,
+      "ann_benchmark": 0.0781,
+      "cum_return": 4.0593,
+      "cum_benchmark": 1.7634,
+      "sharpe": 0.577,
+      "sharpe_benchmark": 0.412,
+      "max_drawdown": -0.4444,
+      "max_drawdown_benchmark": -0.5661,
+      "win_rate": 0.567
+    },
+    "D_shindex_bh": {
+      "n_periods": 680,
+      "ann_return": -0.0064,
+      "cum_return": -0.0829,
+      "sharpe": 0.069,
+      "max_drawdown": -0.5161
+    },
+    "regime_dist": {
+      "n_rebalance": 681,
+      "bear_periods": 142,
+      "crash_periods": 31,
+      "bear_ratio": 0.209
+    }
+  }
+}
