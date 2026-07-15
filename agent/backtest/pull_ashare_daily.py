@@ -16,7 +16,7 @@
   python backtest/pull_ashare_daily.py
 """
 from __future__ import annotations
-import sys, pickle, time, warnings
+import os, sys, pickle, time, warnings
 from pathlib import Path
 
 import numpy as np
@@ -41,9 +41,11 @@ INDEX_CODES = ["000300", "000905", "000852"]
 
 
 def _suffix(code: str) -> str | None:
-    """6 位代码 -> .SH/.SZ 后缀(北交所 4/8 开头通达信 std 不支持, 跳过)."""
+    """6 位代码 -> .SH/.SZ 后缀(北交所 4/8/92 开头通达信 std 不支持, 跳过)."""
     c = code.strip()
     if len(c) != 6 or not c.isdigit():
+        return None
+    if c.startswith("92"):          # 北交所新代码(920xxx/921xxx...)
         return None
     if c[0] in ("6", "9"):
         return f"{c}.SH"
@@ -71,18 +73,20 @@ def _fetch_with_timeout(code, start, end, interval, secs: int = 90):
 
 
 def _get_universe() -> list[str]:
+    """全市场上市A股清单(经 akshare 取全量代码, 去重; 经 _suffix 排除北交所4/8).
+
+    退市股不在此拉(避免 mootdx 对退市股逐个超时挂死), 由 build_survivorship_free_panel.py 走腾讯补齐.
+    """
     import akshare as ak
     codes: list[str] = []
-    for idx in INDEX_CODES:
-        try:
-            cons = ak.index_stock_cons(idx)
-        except Exception as e:
-            print(f"  ⚠ 指数 {idx} 成分获取失败: {repr(e)[:80]}")
-            continue
-        for raw in cons["品种代码"].astype(str).tolist():
+    try:
+        df = ak.stock_info_a_code_name()
+        for raw in df["code"].astype(str).tolist():
             s = _suffix(raw)
             if s and s not in codes:
                 codes.append(s)
+    except Exception as e:
+        print(f"  ⚠ 全市场清单获取失败: {repr(e)[:80]}")
     return codes
 
 
@@ -126,12 +130,17 @@ def main():
     t0 = time.time()
     CACHE.parent.mkdir(parents=True, exist_ok=True)
     cache = pickle.load(open(CACHE, "rb")) if CACHE.exists() else {}
-    print(f"  已落盘 {len(cache)} 只, 目标=沪深300+中证500+中证1000({'+'.join(INDEX_CODES)})")
+    print(f"  已落盘 {len(cache)} 只, 目标=全市场上市A股(akshare stock_info_a_code_name)")
 
     universe = _get_universe()
-    print(f"  中证800 成分 {len(universe)} 只")
+    print(f"  全市场上市A股 {len(universe)} 只")
 
     pending = [c for c in universe if c not in cache]
+    # 分批拉取: PULL_LIMIT 控制单次拉取上限(干净退出+断点续拉), 不设置则一次拉完
+    pull_limit = int(os.environ.get("PULL_LIMIT", "0")) or None
+    if pull_limit:
+        pending = pending[:pull_limit]
+        print(f"  [PULL_LIMIT={pull_limit}] 本批仅拉前 {len(pending)} 只")
     print(f"  待拉取 {len(pending)} 只 (已完成 {len(cache)} 只)")
     if not pending:
         print("  全部已完成, 无需拉取。如需刷新请删除缓存后重跑。")

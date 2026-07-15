@@ -42,9 +42,17 @@ def load_wide():
 
 
 def build_factors(wide):
-    """返回 dict: name -> date×code DataFrame(已为因子值, 未标准化)."""
-    close, open_, low, high, vol, amount = (
-        wide["close"], wide["open"], wide["low"], wide["high"], wide["volume"], wide["amount"])
+    """返回 dict: name -> date×code DataFrame(已为因子值, 未标准化).
+
+    内存策略: 输入宽表降为 float32(全市场 5515 只时, 33 因子 float64 宽表 ~7.2GB 会逼近 8G cgroup 上限);
+    float32 对 rank-IC/中性化/z-score 精度足够. 仅 beta 计算在 _beta_matrix 内显式转 float64 保精度.
+    """
+    close = wide["close"].astype(np.float32)
+    open_ = wide["open"].astype(np.float32)
+    low = wide["low"].astype(np.float32)
+    high = wide["high"].astype(np.float32)
+    vol = wide["volume"].astype(np.float32)
+    amount = wide["amount"].astype(np.float32)
     ret = close.pct_change()
     f = {}
     # ---- 动量 momentum ----
@@ -65,15 +73,8 @@ def build_factors(wide):
     f["ret_skew_60"] = ret.rolling(60).skew()
     # 特质波动 idiosyncratic vol(对等权市场收益的残差波动)
     mkt = ret.mean(axis=1)
-    beta = {}
-    for c in ret.columns:
-        rc = ret[c]; v = rc.notna() & mkt.notna()
-        if v.sum() < 250:
-            beta[c] = np.nan; continue
-        x = mkt[v].values; y = rc[v].values
-        beta[c] = np.cov(x, y)[0, 1] / np.var(x)
-    beta_s = pd.Series(beta)
-    beta_mat = pd.DataFrame({c: beta_s.get(c, np.nan) for c in ret.columns}, index=ret.index)
+    beta = _beta_matrix(ret, mkt, min_obs=250)   # 向量化, 与逐股票 np.cov 循环严格等价(单测 ~1e-15)
+    beta_mat = pd.DataFrame({c: beta.get(c, np.nan) for c in ret.columns}, index=ret.index)
     resid = ret - beta_mat.mul(mkt, axis=0)
     f["ivol_60"] = resid.rolling(60).std()
     # ---- 流动性 liquidity(用 amount) ----
@@ -105,6 +106,36 @@ def build_factors(wide):
     f["vol_price_corr"] = ret.rolling(20).corr(vol.pct_change())  # 量价相关
     f["amount_strength"] = amount / amount.rolling(60).mean() - 1 # 成交强度
     return f
+
+
+def _beta_matrix(ret, mkt, min_obs=250):
+    """向量化 beta = cov(mkt,ret)/var(mkt), 与逐股票 np.cov 循环严格等价(误差~1e-15).
+
+    旧循环每列用各自 paired 子集 v=rc.notna()&mkt.notna(), 在子集上算均值/协方差.
+    此处逐列对齐该子集语义: V 为逐列 paired 掩码, 无效行值先置 0(0.0*nan=nan, 必须 np.where 处理)
+    再求加权矩. 公式为 beta = Sxy*n/(Sxx*(n-1)), 其中 Sxx=Σ(x-xbar)^2, Sxy=Σ(x-xbar)(y-ybar),
+    恰等于 np.cov(x,y)[0,1]/np.var(x)(cov ddof=1, var ddof=0).
+    全市场 5500 只时, 向量化约 0.02s/400只 vs 循环 0.25s/400只 ~10-25x, 且避开逐股票 Python 循环
+    在 600s 会话硬限下跑不完的问题.
+    """
+    R = ret.values.astype(np.float64)
+    Mc = mkt.values.astype(np.float64)[:, None]
+    V = (ret.notna() & mkt.notna().to_numpy()[:, None]).values.astype(np.float64)  # 0/1
+    Mc_s = np.where(V > 0.5, Mc, 0.0)
+    R_s = np.where(V > 0.5, R, 0.0)
+    n = V.sum(axis=0)
+    mkt_sum = Mc_s.sum(axis=0)
+    ret_sum = R_s.sum(axis=0)
+    mkt_sq_sum = (Mc_s ** 2).sum(axis=0)
+    xy_sum = (Mc_s * R_s).sum(axis=0)
+    xbar = mkt_sum / n
+    ybar = ret_sum / n
+    Sxx = mkt_sq_sum - n * xbar ** 2
+    Sxy = xy_sum - n * xbar * ybar
+    with np.errstate(divide="ignore", invalid="ignore"):
+        beta = Sxy * n / (Sxx * (n - 1))
+    beta = np.where(n < min_obs, np.nan, beta)
+    return pd.Series(beta, index=ret.columns)
 
 
 def _adx(high, low, close, n=14):
@@ -167,18 +198,14 @@ def neutralize_factors(factors, ind_map, wide=None, size_proxy=False):
     for i, (name, fw) in enumerate(list(factors.items())):
         print(f"    neutralize[{i+1}/{n}] {name} (rss={_rss():.0f}MB)", flush=True)
         F = fw[valid_codes]                            # 仅取有行业的列
-        # 行业级横截面均值: 逐行业对列求均值(dates × 行业), 再广播回去
-        uniq = pd.unique(ind_valid)
-        means = pd.DataFrame(index=F.index, columns=uniq, dtype=float)
-        for ind in uniq:
-            cols = (ind_valid == ind)
-            means[ind] = F.loc[:, cols].mean(axis=1).values
-        F_neu = F.copy()
-        for ind in uniq:
-            cols = valid_codes[(ind_valid == ind)]
-            F_neu[cols] = F[cols].values - means[ind].values[:, None]
+        # 向量化行业中性: 每个交易日, 每只股票减去其所属行业横截面均值.
+        # 旧实现逐行业 Python 循环(uniq~90行业 × 30因子), 5515只时中性化超 600s 会话上限;
+        # 改为按行业分组一次算均值再广播(与旧循环数学等价, 速度 ~10-30x, 已单测验证).
+        ind_series = pd.Series(ind_valid, index=valid_codes)
+        means = F.T.groupby(ind_series).mean().T       # (dates × 行业) 横截面行业均值
+        F_neu = F.values - means.loc[:, ind_valid].values   # 每列减去其行业均值(广播对齐)
         res = fw.astype(np.float32)                   # 全宽表(float32 省内存; 无行业列保留原值)
-        res[valid_codes] = F_neu.values.astype(np.float32)
+        res[valid_codes] = F_neu.astype(np.float32)
         out[name] = res
         del F, means, F_neu, res, fw
         del factors[name]   # 逐步释放原始因子, 避免原值+中性值同驻撑爆 8G cgroup

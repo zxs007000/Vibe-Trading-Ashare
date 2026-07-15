@@ -65,16 +65,29 @@ def load_wide_sf():
     修复: (1) 取规范A股交易日历 = 原始稠密存活面板的交易日(归一化去时间差);
           (2) 把 SF 日期归一化; (3) 仅保留规范日内行(退市股在 2006-2026 的真实交易日
               本就在该日历内, 不丢有效数据, 只剔除虚假/过早日期); (4) 以归一化日期为索引 pivot.
-    结果: 4975 交易日 × 1803 只(1489 alive + 358 delisted), shift 类因子正常.
+
+    内存策略(全市场 5515 只): OHLCV 直接读成 float32, pivot 后逐列 astype(float32) 并立即
+    从长表 drop 该列, 避免 6 个 float64 宽表(~6.3GB)撑爆 8G cgroup; 长表(code 转 category)
+    也在循环内渐进释放, 最终宽表 ~1.3GB.
     """
-    p = pd.read_parquet(SF_PANEL)
+    import numpy as np
+    p = pd.read_parquet(SF_PANEL, columns=["date", "code", "open", "high", "low",
+                                           "close", "volume", "amount"])
     p["_d"] = pd.to_datetime(p["date"]).dt.normalize()
-    alive = pd.read_parquet(ALIVE_PANEL)
+    alive = pd.read_parquet(ALIVE_PANEL, columns=["date"])
     cal = pd.to_datetime(alive["date"]).dt.normalize().unique()
     p = p[p["_d"].isin(cal)]
     p = p.sort_values(["code", "_d"])
+    p["code"] = p["code"].astype("category")
     cols = ["open", "high", "low", "close", "volume", "amount"]
-    return {c: p.pivot(index="_d", columns="code", values=c) for c in cols}
+    # 长表 OHLCV 先整体转 float32(15.1M行长表 365MB, 而非 float64 725MB), pivot 全程 float32
+    p[cols] = p[cols].astype(np.float32)
+    wide = {}
+    for c in cols:
+        wide[c] = p.pivot(index="_d", columns="code", values=c).astype(np.float32)
+        p = p.drop(columns=[c])   # 渐进释放长表该列, 控峰值
+    del p
+    return wide
 
 
 def build_zarr(factors, factor_names, dates, codes):
