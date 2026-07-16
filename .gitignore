@@ -109,3 +109,5 @@ __pycache__/
 
 # Ops runtime scaffolding (monitor/pid/logs), not project source
 agent/ops/
+_wfa_cache/
+screen_results/triple/run.log
