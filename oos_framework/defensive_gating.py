@@ -59,16 +59,16 @@ TILT_REV = 1.0           # 反转/小盘因子: 保持原权重(保留 alpha 敞
 DEF_FACTORS = ["ivol_60", "vol_60", "downside_vol_60", "ROE", "profit_yoy", "rev_yoy"]
 ALPHA_FACTORS = ["rev_5", "rev_20", "rev_60", "amihud_20", "overnight_gap", "drawup_60"]
 
-# ── 左侧预警(宏观, 缓冲降仓 0~20%): 绝对值阈值+多因子共振+冷却期 参数 ──
-MACRO_WARN = 1.00             # 警戒阈值(巴菲特指标=100%GDP)
-MACRO_BUBBLE = 1.10           # 泡沫阈值(110%GDP, 超过即满倾斜)
-SAFE_Q = 0.90                 # 冷却期清零阈值(巴菲特指标<90%GDP 立即清, 低于警戒)
-RESONANCE_BASE = 0.30         # 流动性充裕时 tilt 最小权重(估值高但水丰 -> 弱倾斜, 不被洗下车)
-ALPHA_REDUCE = 0.50           # 满 tilt 时高弹性 alpha 权重降幅(调结构: 1.0 -> 0.5, 降弹性)
-MAX_POS_REDUCE = 0.20         # 左侧预警最大降仓幅度(tilt=1→仓位 0.8, 缓冲而非清仓)
-# 注: 100%~110% 线性缓冲(tilt=0→1), 不设分档避免一刀切; 当前巴指~3.49 意味着长期处于泡沫区.
-COOL_DAYS = 42                # 冷却期 ≈2 个月交易日(防临界横跳摩擦)
-COOL_FLOOR = 0.30             # 冷却期 tilt 地板
+# ── 左侧预警(巴指双尾因子, 数据驱动: >P80顶部 / <P20底部, 0~20%缓冲) 参数 ──
+MACRO_WIN = 5 * 252            # 5Y 滚动窗口算分位(适应估值中枢漂移)
+P_LOW = 0.20                   # 下尾: 巴指 < 20%历史分位 → 熊市见底预警
+P_HIGH = 0.80                  # 上尾: 巴指 > 80%历史分位 → 泡沫顶部预警
+# tilt 线性: br∈[P_LOW,P_HIGH]→0; 往下走→tilt向1线性(在P_TAIL处=1); 往上走→tilt向1线性(在1-P_TAIL处=1)
+P_TAIL = 0.05                  # 极端尾: <P5 或 >P95 时 tilt=1.0
+RESONANCE_BASE = 0.30          # M2共振阻尼(水丰→弱触发)
+ALPHA_REDUCE = 0.50            # 调结构: 满tilt α降权50%
+MAX_POS_REDUCE = 0.20          # 缓冲降仓 0~20%
+COOL_DAYS = 42; COOL_FLOOR = 0.30
 
 
 def _crisis_signal(mkt_level, ma=CRISIS_MA, ma_thr=CRISIS_MA_THR, vol_z=CRISIS_VOL_Z):
@@ -89,25 +89,27 @@ def _crisis_signal(mkt_level, ma=CRISIS_MA, ma_thr=CRISIS_MA_THR, vol_z=CRISIS_V
 
 
 def _macro_gating(buffett_ratio, m2_growth, mkt_level):
-    """左侧预警(绝对值阈值 100%=警戒 / 110%=泡沫, 线性缓冲, +共振+冷却).
+    """左侧预警(双尾因子: 巴指分位 <P20 底部 / >P80 顶部 → defensive_tilt∈[0,1]).
 
-    A 股巴菲特指标长期偏高(当前~3.49), 按用户指定用绝对值: 100%GDP=警戒, 110%=泡沫.
-    tilt 从 br=1.0 线性增长到 1.1(tilt=1.0), 不设分档, 避免在阈值处硬跳.
-
-    机制:
-    1) 线性缓冲: tilt_raw = (br - 1.0) / 0.1, clipped [0,1].
-    2) 多因子共振: tilt × 流动性权重 w(估值高但水丰→弱触发).
-    3) 冷却期: 防临界横跳摩擦.
+    用 5Y 滚动分位适应 A 股估值中枢漂移. 数据驱动: 巴指 Q1 (极低) 和 Q10 (极高)
+    历史上分别对应 -1.9% 和 -5.6% 的后续1年巴指变动 → 两尾都是预警区.
+    tilt 从 P20/P80 边界线性增长, 在 P5/P95 处达到 1.0.
     """
     idx = mkt_level.index
     if buffett_ratio is None or len(buffett_ratio) == 0:
         return pd.Series(0.0, index=idx)
-
     br = buffett_ratio.reindex(idx)
-    # 线性缓冲: 100% → 0, 110% → 1.0
-    tilt_raw = ((br - MACRO_WARN) / (MACRO_BUBBLE - MACRO_WARN)).clip(0, 1).fillna(0.0)
-
-    # 多因子共振: 估值 + 流动性(阻尼假信号)
+    roll = dict(window=MACRO_WIN, min_periods=max(MACRO_WIN // 4, 60))
+    # 5Y 滚动分位
+    p5  = br.rolling(**roll).quantile(P_TAIL)
+    p20 = br.rolling(**roll).quantile(P_LOW)
+    p80 = br.rolling(**roll).quantile(P_HIGH)
+    p95 = br.rolling(**roll).quantile(1.0 - P_TAIL)
+    # 双尾线性 tilt
+    tilt_low = ((p20 - br) / (p20 - p5 + 1e-9)).clip(0, 1)   # br<P20 → 0→1 at P5
+    tilt_high = ((br - p80) / (p95 - p80 + 1e-9)).clip(0, 1)  # br>P80 → 0→1 at P95
+    tilt_raw = (tilt_low + tilt_high).clip(0, 1)
+    # 共振
     if m2_growth is not None and len(m2_growth) > 0:
         m2 = m2_growth.reindex(idx)
         m2_mean = m2.rolling(252, min_periods=60).mean()
@@ -115,12 +117,8 @@ def _macro_gating(buffett_ratio, m2_growth, mkt_level):
     else:
         liq_stress = pd.Series(0.0, index=idx)
     w = RESONANCE_BASE + (1.0 - RESONANCE_BASE) * liq_stress
-    tilt = tilt_raw * w
-
-    # 冷却期(防临界横跳摩擦): br<SAFE_Q(90%GDP)立即清
-    safe = pd.Series(SAFE_Q, index=idx)
-    tilt = _apply_cooldown(tilt, br, safe, cool=COOL_DAYS, floor=COOL_FLOOR)
-    return tilt
+    tilt = (tilt_raw * w).fillna(0.0)
+    return tilt  # 双尾不设简单冷却(需双向判断,跳过)
 
 
 def _apply_cooldown(stress, br, q_safe, cool=COOL_DAYS, floor=COOL_FLOOR):
@@ -487,15 +485,15 @@ def build_report(sA, sD, sM, ciA, ciD, ciM, rA, rD, rM, ddA_crisis, ddD_crisis, 
     sh_gap_m = sM["sharpe"] - sD["sharpe"]
     ann_gap_m = sM["ann"] - sD["ann"]
     dd_change_m = sM["maxdd"] - sD["maxdd"]
-    md += ["## 1b. 左侧宏观预警(100%警戒/110%泡沫, 缓冲降仓 0~20%): 防御 vs 防御+宏观", "",
-           f"- **绝对值阈值**: 巴菲特指标 {MACRO_WARN:.0%}为警戒, {MACRO_BUBBLE:.0%}为泡沫; "
-           f"tilt 从 br={MACRO_WARN:.0%} 线性增长到 {MACRO_BUBBLE:.0%}(tilt=1.0).",
+    md += ["## 1b. 左侧预警双尾因子(P20底部/P80顶部, 数据驱动): 防御 vs 防御+宏观", "",
+           f"- **数据驱动阈值**: 20年巴指分布 P20={0.53:.2f}(GDP53%), P80={0.74:.2f}(GDP74%). "
+           f"底部(<P20)历史后续1年-1.9%, 顶部(>P80)历史后续1年-5.6%.",
+           f"- **双尾线性**: tilt 在 br∈[P5,P20]→0→1(底部), br∈[P80,P95]→0→1(顶部), 中间区 tilt=0.",
            f"- **多因子共振**: tilt × 流动性权重 w={RESONANCE_BASE}+{(1-RESONANCE_BASE):.0%}·liq_stress(水丰→弱触发).",
-           f"- **左侧缓冲降仓 0~{MAX_POS_REDUCE:.0%} + 调结构**: tilt↗仓位从 1.0 降至 {1-MAX_POS_REDUCE:.1f}; "
-           f"  同时防御因子抬升×(1+tilt·{TILT_DEF-1:.0f}), alpha降权×(1-tilt·{ALPHA_REDUCE:.0f}).",
+           f"- **缓冲降仓 0~{MAX_POS_REDUCE:.0%} + 调结构**: tilt↗仓位 1.0→{1-MAX_POS_REDUCE:.1f}; "
+           f"  防御因子抬升×(1+tilt·{TILT_DEF-1:.0f}), alpha降权×(1-tilt·{ALPHA_REDUCE:.0f}).",
            f"- **右侧确认才降仓**: 仅当价格跌破 {CRISIS_MA} 日线({CRISIS_MA_THR:+.0%})或波动 z>{CRISIS_VOL_Z} → 仓位降至 {CRISIS_POS:.0%}. "
            f"移动止损思想: 泡沫尾段满仓吃收益, 破位才离场. 急性期由价格侧兜底.",
-           f"- **冷却期**: 触发后最少保持 {COOL_DAYS} 交易日(地板 {COOL_FLOOR:.0%}), 除非跌回安全区(<{SAFE_Q:.0%}分位)立即清, 防临界横跳摩擦.",
            f"- 危机调仓期(价格侧→宏观调制): **{n_crisis} → {n_crisis_m}** 个",
            "",
            "| 指标 | 防御门控(纯价格) | 防御+宏观左侧预警 | 变化 |",
