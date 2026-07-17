@@ -487,13 +487,12 @@ def build_report(sA, sD, sM, ciA, ciD, ciM, rA, rD, rM, ddA_crisis, ddD_crisis, 
     sh_gap_m = sM["sharpe"] - sD["sharpe"]
     ann_gap_m = sM["ann"] - sD["ann"]
     dd_change_m = sM["maxdd"] - sD["maxdd"]
-    md += ["## 1b. 左侧宏观预警(仅调结构不降仓) + 右侧价格破位降仓: 防御 vs 防御+宏观", "",
-           f"- **缓冲带(多档, 用 5Y 分位非绝对阈值)**: 正常(<{BUF_Q[0]:.0%})→不调结构; "
-           f"警戒({BUF_Q[0]:.0%}~{BUF_Q[1]:.0%})→弱倾斜; 极端({BUF_Q[1]:.0%}~{BUF_Q[2]:.0%})→中; 泡沫(>{BUF_Q[2]:.0%})→强倾斜.",
-           f"- **多因子共振(过滤假信号)**: defensive_tilt × 流动性权重 w={RESONANCE_BASE}+{(1-RESONANCE_BASE):.0%}·liq_stress; "
-           f"估值高但 M2 同比充裕(如2014-15H1)→w≈{RESONANCE_BASE:.0%} 弱倾斜(不被洗下车); 估值高且流动性收紧→全权确认.",
-           f"- **左侧预警最多降仓 20%**: defensive_tilt 调制因子权重(防御抬升/alpha降权)+仓位连续缓冲 "
-           f"(满 tilt 降 {MAX_POS_REDUCE:.0%}, 即 1.0→{1-MAX_POS_REDUCE:.1%}); **不提前清仓**, 参与泡沫尾段.",
+    md += ["## 1b. 左侧宏观预警(100%警戒/110%泡沫, 缓冲降仓 0~20%): 防御 vs 防御+宏观", "",
+           f"- **绝对值阈值**: 巴菲特指标 {MACRO_WARN:.0%}为警戒, {MACRO_BUBBLE:.0%}为泡沫; "
+           f"tilt 从 br={MACRO_WARN:.0%} 线性增长到 {MACRO_BUBBLE:.0%}(tilt=1.0).",
+           f"- **多因子共振**: tilt × 流动性权重 w={RESONANCE_BASE}+{(1-RESONANCE_BASE):.0%}·liq_stress(水丰→弱触发).",
+           f"- **左侧缓冲降仓 0~{MAX_POS_REDUCE:.0%} + 调结构**: tilt↗仓位从 1.0 降至 {1-MAX_POS_REDUCE:.1f}; "
+           f"  同时防御因子抬升×(1+tilt·{TILT_DEF-1:.0f}), alpha降权×(1-tilt·{ALPHA_REDUCE:.0f}).",
            f"- **右侧确认才降仓**: 仅当价格跌破 {CRISIS_MA} 日线({CRISIS_MA_THR:+.0%})或波动 z>{CRISIS_VOL_Z} → 仓位降至 {CRISIS_POS:.0%}. "
            f"移动止损思想: 泡沫尾段满仓吃收益, 破位才离场. 急性期由价格侧兜底.",
            f"- **冷却期**: 触发后最少保持 {COOL_DAYS} 交易日(地板 {COOL_FLOOR:.0%}), 除非跌回安全区(<{SAFE_Q:.0%}分位)立即清, 防临界横跳摩擦.",
