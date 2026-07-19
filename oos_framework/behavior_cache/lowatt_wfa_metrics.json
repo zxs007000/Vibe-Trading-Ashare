@@ -1,0 +1,62 @@
+[
+  {
+    "label": "NoGate",
+    "ann_ret": 0.2438,
+    "ann_vol": 0.2394,
+    "sharpe": 1.018,
+    "maxdd": -0.3788,
+    "calmar": 0.64,
+    "dd_2024feb": -0.2846,
+    "final_eq": 4.847,
+    "years": 7.2,
+    "avg_turnover": 0.533
+  },
+  {
+    "label": "Gate15",
+    "ann_ret": 0.0432,
+    "ann_vol": 0.1308,
+    "sharpe": 0.33,
+    "maxdd": -0.2816,
+    "calmar": 0.15,
+    "dd_2024feb": -0.0848,
+    "final_eq": 1.358,
+    "years": 7.2,
+    "avg_turnover": 0.533
+  },
+  {
+    "label": "Gate30",
+    "ann_ret": 0.0986,
+    "ann_vol": 0.1811,
+    "sharpe": 0.544,
+    "maxdd": -0.4107,
+    "calmar": 0.24,
+    "dd_2024feb": -0.2492,
+    "final_eq": 1.974,
+    "years": 7.2,
+    "avg_turnover": 0.533
+  },
+  {
+    "label": "SmallCapGate30",
+    "ann_ret": 0.0971,
+    "ann_vol": 0.1812,
+    "sharpe": 0.536,
+    "maxdd": -0.4134,
+    "calmar": 0.23,
+    "dd_2024feb": -0.253,
+    "final_eq": 1.955,
+    "years": 7.2,
+    "avg_turnover": 0.535
+  },
+  {
+    "label": "HS300Gate",
+    "ann_ret": 0.0872,
+    "ann_vol": 0.1211,
+    "sharpe": 0.72,
+    "maxdd": -0.2394,
+    "calmar": 0.36,
+    "dd_2024feb": -0.0197,
+    "final_eq": 1.83,
+    "years": 7.2,
+    "avg_turnover": 0.509
+  }
+]

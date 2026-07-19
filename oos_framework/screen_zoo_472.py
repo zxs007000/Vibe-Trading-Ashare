@@ -79,11 +79,33 @@ class compute_timeout:
         return False  # 不吞异常
 
 
+def _compute_with_timeout(reg, aid, panel, timeout):
+    """Windows 兼容的单因子 compute 超时(替代 Unix-only 的 signal.SIGALRM).
+
+    原脚本用 signal.SIGALRM 做超时保护, 但 SIGALRM 在 Windows 不存在 -> AttributeError.
+    这里改用线程池: 在子线程跑 reg.compute, 主线程 result(timeout=) 等待; 超时即抛
+    _ComputeTimeout 被上层捕获并标记为 error 跳过. SkipAlpha/RegistryError 等异常会
+    经 future.result() 原样重抛, 原有 except 分支照常工作. 注意: 超时后子线程仍在后台
+    跑完(不强制杀线程), 仅主线程放弃其结果继续下一个 alpha —— 对一次性全量筛查可接受.
+    """
+    import concurrent.futures as _cf
+    with _cf.ThreadPoolExecutor(max_workers=1) as _ex:
+        _fut = _ex.submit(reg.compute, aid, panel)
+        try:
+            return _fut.result(timeout=timeout)
+        except _cf.TimeoutError:
+            raise _ComputeTimeout(f"compute 超时 >{timeout}s,疑似外部API挂死")
+
+
 def _norm_two_sided_p(t):
-    """正态近似双尾 p(Safe, 无 scipy)."""
+    """正态近似双尾 p(Safe, 无 scipy).
+
+    标准双侧 p = erfc(|t|/√2) ∈ [0,1](由 Φ(-|t|)=½·erfc(|t|/√2) 推得).
+    旧写法 `2·erfc(...)` 会放大 2 倍且可能 >1, 已修正并 clamp 到 [0,1].
+    """
     if not (t == t):
         return np.nan
-    return 2.0 * math.erfc(abs(t) / math.sqrt(2.0))
+    return min(1.0, math.erfc(abs(t) / math.sqrt(2.0)))
 
 
 def _rank_ic_vr(fac, vr, dates, batch=300):
@@ -137,8 +159,7 @@ def run_screen(ids, reg, panel, fwd, vr, dates, regime, csv_path, probe=False, f
             rec["zoo"] = rec["theme"] = rec["cols"] = ""
             rec["needs_sector"] = False
         try:
-            with compute_timeout(COMPUTE_TIMEOUT):
-                fac = reg.compute(aid, panel)
+            fac = _compute_with_timeout(reg, aid, panel, COMPUTE_TIMEOUT)
         except _ComputeTimeout as e:
             rec.update(status="error", reason=f"compute超时(>{COMPUTE_TIMEOUT}s,疑似外部API挂死)",
                        icir=np.nan, p=np.nan)
@@ -160,9 +181,32 @@ def run_screen(ids, reg, panel, fwd, vr, dates, regime, csv_path, probe=False, f
                 rec.update(status="no_ic", reason="IC 样本不足", icir=np.nan, p=np.nan)
                 rows.append(rec); del fac; gc.collect()
                 _maybe_flush(rows, csv_path, flush_every, i, n, t0); continue
+            icv = np.asarray(icv, dtype=float)
+            icv = icv[~np.isnan(icv)]             # IC 序列去 NaN(numpy array, 无 dropna)
             ic_mean = float(icv.mean()); ic_std = float(icv.std())
-            icir = ic_mean / (ic_std + 1e-12) * np.sqrt(252)
-            tstat = ic_mean / (ic_std / np.sqrt(len(icv)) + 1e-12)
+            n_ic = len(icv)                       # 逐日 IC 序列长度(5日持有期 -> 重叠)
+            # IC 序列 lag-1 自相关(Newey-West 有效样本修正需要)
+            if n_ic > 2:
+                try:
+                    rho = float(np.corrcoef(icv[:-1], icv[1:])[0, 1])
+                except Exception:
+                    rho = 0.0
+            else:
+                rho = 0.0
+            if np.isnan(rho): rho = 0.0
+            rho = max(min(rho, 0.99), -0.99)
+            # 有效独立观测数: 先按 HOLD 去重叠, 再按自相关衰减
+            n_eff_overlap = max(n_ic // HOLD, 1)                          # 非重叠前瞻期数
+            n_eff_nw = max(int(round(n_eff_overlap * (1 - rho) / (1 + rho + 1e-12))), 1)
+            # ★ BUG1: ICIR = IC序列信息比率(不年化, 业界标准). 旧代码误乘 sqrt(252) 放大~2.24x.
+            icir = ic_mean / (ic_std + 1e-12)
+            # 年化参考值(仅去重叠, 不含自相关): icir * sqrt(BPY)
+            icir_ann = icir * np.sqrt(BPY)
+            # ★ BUG2(完整版): 年化 ICIR 同时扣 IC 自相关 -> sqrt(BPY*(1-rho)/(1+rho)).
+            #   HOLD=5, rho≈0.9 时 (1-rho)/(1+rho)≈0.053, 把 icir_ann 再砍 ~4.4x.
+            icir_nw = icir * np.sqrt(max(BPY * (1 - rho) / (1 + rho + 1e-12), 1e-12))
+            # ★ 显著性 t 检验用完整有效样本 n_eff_nw, 否则重叠+自相关双重灌水 -> t/p 虚高.
+            tstat = ic_mean / (ic_std / np.sqrt(n_eff_nw) + 1e-12)
             p = _norm_two_sided_p(tstat)
             # regime 拆分
             ic_s = ic.reindex(regime.index)
@@ -173,7 +217,10 @@ def run_screen(ids, reg, panel, fwd, vr, dates, regime, csv_path, probe=False, f
             reversal_in_bear = (ic_bear > 0) and (ic_bull <= 0)
             regime_flip = (ic_bull > 0) != (ic_bear > 0)  # 符号翻转
             rec.update(status="ok", ic_mean=round(ic_mean, 5), ic_std=round(ic_std, 5),
-                       icir=round(icir, 3), ic_tstat=round(tstat, 2), p=round(p, 4),
+                       icir=round(icir, 3), icir_ann=round(icir_ann, 3),
+                       icir_nw=round(icir_nw, 3), rho=round(rho, 3),
+                       n_eff_nw=int(n_eff_nw),
+                       ic_tstat=round(tstat, 2), p=round(p, 4),
                        ic_bull=round(ic_bull, 5), ic_bear=round(ic_bear, 5),
                        ic_osc=round(ic_osc, 5),
                        reversal_in_bear=int(reversal_in_bear),
@@ -206,6 +253,10 @@ def main():
     ap.add_argument("--limit", type=int, default=0, help="只跑前 N 个(快筛)")
     ap.add_argument("--stocks", type=int, default=2500,
                     help="截面股票数(按数据完整度取最密的前 N 只, 省内存+提速; 0=全量5515)")
+    ap.add_argument("--exclude", type=str, default=None,
+                    help="逗号分隔关键词, alpha_id 命中则跳过(如 'sentiment' 去掉舆情因子)")
+    ap.add_argument("--only", type=str, default=None,
+                    help="逗号分隔关键词, 只跑命中的 alpha_id(如 'sentiment' 只跑舆情因子)")
     args = ap.parse_args()
 
     print("=" * 64)
@@ -283,6 +334,13 @@ def main():
     ids = all_ids[: args.limit] if args.limit else all_ids
     if args.probe:
         ids = ids[: args.probe]
+    # 主题过滤: --only 只跑命中, --exclude 跳过命中(分两阶段: 先跑正常因子, 再补舆情)
+    if args.only:
+        _keys = [k.strip() for k in args.only.split(",") if k.strip()]
+        ids = [i for i in ids if any(k in i for k in _keys)]
+    elif args.exclude:
+        _keys = [k.strip() for k in args.exclude.split(",") if k.strip()]
+        ids = [i for i in ids if not any(k in i for k in _keys)]
     # 断点续跑: 跳过 CSV 中已完成的 alpha
     done_ids = set()
     if CSV.exists():
@@ -330,6 +388,12 @@ def build_report(df, ok, skip, err, n_total, n_run, dates, t0, probe):
           f"- 注册表总因子: **{n_total}**; 本次筛查: **{n_run}**" + ("(探针)" if probe else ""),
           f"- 方法: 逐 alpha compute(panel) → 逐日横截面 rank-IC(对 {HOLD}d 前瞻收益) → "
           f"ICIR + 正态近似 p; 按牛/熊/震荡 regime 拆 IC",
+          f"- **ICIR 口径(三层)**: "
+          f"`icir = mean(IC)/std(IC)` 为 IC 序列信息比率(**不年化**, 业界标准, 排序以此为准); "
+          f"`icir_ann = icir×√({BPY:.1f})` 仅按{HOLD}d持有期去重叠年化(参考); "
+          f"`icir_nw = icir×√(BPY·(1-ρ)/(1+ρ))` 为**完整修正年化**(再扣 IC 自相关 ρ, 推荐跨期比较用). "
+          f"IC 序列 lag-1 自相关 ρ 已计入有效样本 n_eff_nw=(n_ic//HOLD)·(1-ρ)/(1+ρ). "
+          f"⚠️ 旧版误用 `icir×√252`(且未扣自相关) 会高估 4~6x, t 检验未修正重叠+自相关 -> p 值严重虚高.",
           f"- 牛熊反转定义: 熊市 IC>0(反转有效) **且** 牛市 IC<=0(动量主导) = regime_flip 或 reversal_in_bear",
           f"- 派生字段: returns/vwap(=amount/volume)/adv(=amount.rolling20) 由 OHLCV 精确变换",
           ""]
@@ -344,12 +408,15 @@ def build_report(df, ok, skip, err, n_total, n_run, dates, t0, probe):
         ok["abs_icir"] = ok["icir"].abs()
         # Top |ICIR|
         top = ok.sort_values("abs_icir", ascending=False).head(30)
-        md += ["## 2. Top 30 因子(按 |ICIR| 降序)", "",
-               "| rank | alpha_id | zoo | ICIR | p | IC_bull | IC_bear | IC_osc | "
+        md += ["## 2. Top 30 因子(按 |ICIR| 降序, 不年化口径排序)", "",
+               "| rank | alpha_id | zoo | ICIR | ICIR_ann | ICIR_nw | ρ | p | IC_bull | IC_bear | IC_osc | "
                "regime_flip | reversal_in_bear |",
-               "|---|---|---|---|---|---|---|---|---|---|"]
+               "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
         for rk, (_, r) in enumerate(top.iterrows(), 1):
-            md.append(f"| {rk} | {r['alpha_id']} | {r['zoo']} | {r['icir']:+.3f} | {r['p']:.3f} | "
+            md.append(f"| {rk} | {r['alpha_id']} | {r['zoo']} | {r['icir']:+.3f} | "
+                      f"{float(r.get('icir_ann', float('nan'))):+.3f} | "
+                      f"{float(r.get('icir_nw', float('nan'))):+.3f} | "
+                      f"{float(r.get('rho', float('nan'))):+.3f} | {r['p']:.3f} | "
                       f"{r['ic_bull']:+.4f} | {r['ic_bear']:+.4f} | {r['ic_osc']:+.4f} | "
                       f"{int(r['regime_flip'])} | {int(r['reversal_in_bear'])} |")
         md += [""]

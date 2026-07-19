@@ -34,14 +34,15 @@ DATA = Path("/workspace/stock_worm/data")
 SF_PANEL = DATA / "ashare_daily_panel_survivorfree.parquet"
 ALIVE_PANEL = DATA / "ashare_daily_panel.parquet"
 CSRC_MAP = DATA / "csrc_industry_map.parquet"
-FUND_PARQUET = DATA / "fundamentals/fund_factors_daily.parquet"
-FUND_NAMES = ["ROE", "rev_yoy", "profit_yoy"]
+FUND_PARQUET = DATA / "fundamentals/fund_factors_daily.parquet"  # 旧 ROE 等(仅 zoo 面板注入用, 候选池已切 PIT 基本面)
 OUT_DIR = HERE / "screen_results"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 REGIME_CSV = OUT_DIR / "factor_regime.csv"
 
 sys.path.insert(0, str(HERE.parent / "agent/backtest"))
-from factor_zoo_daily import build_factors, neutralize_factors, ALL_FACTOR_NAMES, daily_rank_ic
+from factor_zoo_daily import (build_factors, neutralize_factors, ALL_FACTOR_NAMES,
+                             ZOO_FACTOR_NAMES, FUND_FACTOR_NAMES, daily_rank_ic,
+                             set_market_regime, build_zoo_factors, build_fundamental_factors)
 from oos_validation_corrected import load_wide_sf, build_zarr
 from oos_validation import _stat_block, TOP_K, HOLD, COST, TRAIL, RNG, BPY
 from backtest.validation import _sharpe
@@ -103,16 +104,15 @@ def _load_data():
     ind_map = dict(zip(mp["code"], mp["csrc_industry"]))
     cov = sum(1 for v in ind_map.values() if pd.notna(v))
     fac = build_factors(w)
+    fac.update(build_zoo_factors(w))   # 候选池刷新: 并入 zoo 短名单因子
+    fac.update(build_fundamental_factors(w))   # 候选池刷新 #2: PIT 基本面因子(并入后随价量一起行业中性化)
     fac = neutralize_factors(fac, ind_map)
     del w
-    fund = pd.read_pickle(FUND_PARQUET)
-    for f in FUND_NAMES:
-        fac[f] = fund[f]
-    ALL = ALL_FACTOR_NAMES + FUND_NAMES
+    ALL = ALL_FACTOR_NAMES + ZOO_FACTOR_NAMES + FUND_FACTOR_NAMES
     zarr = build_zarr(fac, ALL, dates, codes)
     del fac
-    for f in FUND_NAMES:
-        zarr[f] = np.nan_to_num(zarr[f], nan=0.0)
+    for f in FUND_FACTOR_NAMES:
+        zarr[f] = np.nan_to_num(zarr[f], nan=0.0)   # 写盘前补全基本面因子 NaN
     fac_ic = {f: daily_rank_ic(pd.DataFrame(zarr[f], index=dates, columns=codes), fwd)
               for f in ALL}
     fac_ic = {f: s.reindex(dates) for f, s in fac_ic.items()}
@@ -170,11 +170,13 @@ def load_engine_inputs_cached():
     n_codes = w["close"].shape[1]
     fwd = w["close"].pct_change(HOLD).shift(-HOLD).clip(-0.5, 0.5).astype(np.float32)
     dates, codes = fwd.index, fwd.columns
+    # 牛熊 regime: 全市场等权趋势(250d偏离), 注入 build_factors 供牛熊混合反转因子判定牛/熊
+    mkt_trend = (w["close"].mean(axis=1) / w["close"].mean(axis=1).rolling(250).mean() - 1)
+    set_market_regime(mkt_trend)
     mp = pd.read_parquet(CSRC_MAP)
     ind_map = dict(zip(mp["code"], mp["csrc_industry"]))
     cov = sum(1 for v in ind_map.values() if pd.notna(v))
-    ALL = ALL_FACTOR_NAMES + FUND_NAMES
-    fund = pd.read_pickle(FUND_PARQUET)
+    ALL = ALL_FACTOR_NAMES + ZOO_FACTOR_NAMES + FUND_FACTOR_NAMES
 
     if done.exists() and all((zarr_dir / f"{f}.npy").exists() for f in ALL) and fic_p.exists():
         zarr = {f: np.load(zarr_dir / f"{f}.npy", mmap_mode="r") for f in ALL}  # mmap: 按需加载, 不占常驻
@@ -182,7 +184,11 @@ def load_engine_inputs_cached():
         print(f"  [cache] zarr({len(ALL)}因子)+fac_ic 命中 ({time.time()-t0:.1f}s)")
     else:
         nd, nc = len(dates), n_codes
-        zarr = {f: np.empty((nd, nc), dtype=np.float32) for f in ALL}
+        # memmap 落盘: 避免 66 因子(34原+32zoo)全量 zarr(>7G)占满 8G cgroup 匿名内存 -> OOM.
+        # 文件映射内存可被 cgroup 回收, 比 np.empty 匿名内存安全.
+        zarr = {}
+        for f in ALL:
+            zarr[f] = np.memmap(zarr_dir / f"{f}.mmap", dtype=np.float32, mode="w+", shape=(nd, nc))
         code_pos = {c: i for i, c in enumerate(codes)}
         CHUNK = 600
         chunks = [list(codes)[i:i + CHUNK] for i in range(0, nc, CHUNK)]
@@ -191,9 +197,13 @@ def load_engine_inputs_cached():
             idx = [code_pos[c] for c in ch]
             w_c = {k: w[k][ch] for k in w}
             fac_c = build_factors(w_c)
+            zoo_c = build_zoo_factors(w_c)   # 候选池刷新: 并入 zoo 短名单
+            for k, v in zoo_c.items():
+                fac_c[k] = v.reindex(index=dates, columns=ch).astype(np.float32)
+            fund_c = build_fundamental_factors(w_c)   # 候选池刷新 #2: PIT 基本面因子
+            for k, v in fund_c.items():
+                fac_c[k] = v.reindex(index=dates, columns=ch).astype(np.float32)
             fac_c = neutralize_factors(fac_c, ind_map)
-            for f in FUND_NAMES:
-                fac_c[f] = fund[f].reindex(index=dates, columns=ch)
             for f in ALL:
                 zf = fac_c[f]
                 mu = zf.mean(axis=1); sd = zf.std(axis=1)
@@ -203,15 +213,15 @@ def load_engine_inputs_cached():
             del w_c, fac_c
             import gc as _gc; _gc.collect()
             print(f"    块{ci+1}/{len(chunks)} done (RSS={_rss():.0f}MB, {time.time()-t0:.1f}s)", flush=True)
-        for f in FUND_NAMES:
-            zarr[f] = np.nan_to_num(zarr[f], nan=0.0)   # 写盘前补全 fund 因子 NaN, 否则落盘含 NaN
+        for f in FUND_FACTOR_NAMES:
+            zarr[f] = np.nan_to_num(zarr[f], nan=0.0)   # 写盘前补全基本面因子 NaN, 否则落盘含 NaN
         fwdv = fwd.values
         fac_ic = {}
         for f in ALL:
-            # 逐因子写盘: fsync 回写脏页 + posix_fadvise(DONTNEED) 丢弃页缓存, 避免 3.6G 写盘
+            # 逐因子写盘: fsync 回写脏页 + posix_fadvise(DONTNEED) 丢弃页缓存, 避免写盘
             # 产生的干净页缓存在 cgroup 内累积撑爆 8G; 同时立即算 fac_ic 并释放该因子内存.
             with open(zarr_dir / f"{f}.npy", "wb") as fh:
-                np.save(fh, zarr[f])
+                np.save(fh, np.asarray(zarr[f]))   # memmap -> 常规数组落盘
                 fh.flush(); os.fsync(fh.fileno())
                 try:
                     os.posix_fadvise(fh.fileno(), 0, 0, os.POSIX_FADV_DONTNEED)
@@ -219,6 +229,10 @@ def load_engine_inputs_cached():
                     pass
             fac_ic[f] = _daily_rank_ic_arr(zarr[f], fwdv, dates).reindex(dates)
             del zarr[f]
+            try:
+                (zarr_dir / f"{f}.mmap").unlink()   # 清理 memmap 中间文件
+            except Exception:
+                pass
         pd.to_pickle(fac_ic, fic_p)
         done.write_text("1")
         # 重新 mmap 懒加载(不占常驻), 供同进程 WFA 使用; 写盘内存已随 del 释放

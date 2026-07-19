@@ -32,6 +32,15 @@ HEAT = OUT_DIR / "factor_zoo_regime_heatmap.png"
 CACHE = OUT_DIR / "factor_zoo_ic.pkl"
 FWD_HORIZON = 5          # 5日持有 -> 用 5日前向收益算 IC(与回测框架一致)
 
+# 牛熊 regime 注入: WFA 用全市场趋势算一次后 set 进来, build_factors 分块时复用
+# (build_factors 按股票分块调用, 块内 close.mean 只是块均值, 不能当市场趋势, 故由外部注入)
+_MARKET_TREND = None
+def set_market_regime(s):
+    """注入全市场趋势序列(date-indexed, 如 mkt_level/等权均值 的 250d 偏离),
+    供牛熊混合反转因子判定牛/熊/拐点. 不注入时该因子退化为 20d 反转."""
+    global _MARKET_TREND
+    _MARKET_TREND = s
+
 
 def load_wide():
     p = pd.read_parquet(PANEL)
@@ -67,6 +76,20 @@ def build_factors(wide):
     f["rev_20"] = -f["mom_20"]
     f["rev_60"] = -f["mom_60"]
     f["rev_intraday"] = -(close - open_) / open_               # 隔夜/日内反转
+    # ---- 牛熊混合反转(千问方案): 牛=动量分位 / 熊=反转分位 / 拐点=60%反转+40%动量 ----
+    # 用交叉截面分位秩混合: 牛→动量分位, 熊→反转分位, 中间平滑过渡(拐点≈50/50).
+    mom_lt = close / close.shift(250) - 1                       # 1年动量
+    rev_mt = -(close / close.shift(20) - 1)                     # 20日反转
+    mom_r = mom_lt.rank(axis=1, pct=True)
+    rev_r = rev_mt.rank(axis=1, pct=True)
+    if _MARKET_TREND is not None:
+        mt = _MARKET_TREND.reindex(close.index)
+        w_bull = ((mt + 0.15) / 0.30).clip(0, 1)                # 1=强牛(用动量) 0=熊(用反转)
+        wbm = pd.DataFrame(np.tile(w_bull.values.reshape(-1, 1), (1, close.shape[1])),
+                           index=close.index, columns=close.columns)
+        f["bullbear_rev"] = wbm * mom_r + (1 - wbm) * rev_r
+    else:
+        f["bullbear_rev"] = rev_r                               # 无 regime 时退化为 20d 反转
     # ---- 波动 volatility ----
     f["vol_20"] = ret.rolling(20).std()
     f["vol_60"] = ret.rolling(60).std()
@@ -157,6 +180,7 @@ FACTOR_FAMILY = {
     "mom_5": "动量", "mom_20": "动量", "mom_60": "动量", "mom_120": "动量",
     "mom_250": "动量", "mom_12_1": "动量",
     "rev_5": "反转", "rev_20": "反转", "rev_60": "反转", "rev_intraday": "反转",
+    "bullbear_rev": "牛熊反转",
     "vol_20": "波动", "vol_60": "波动", "ret_skew_60": "波动",
     "ivol_60": "特质波动",
     "amihud_20": "流动性", "dolvol_trend": "流动性",
@@ -167,6 +191,198 @@ FACTOR_FAMILY = {
     "vol_ratio": "量价", "vol_price_corr": "量价", "amount_strength": "量价",
 }
 ALL_FACTOR_NAMES = list(FACTOR_FAMILY.keys())
+
+# ---- zoo 因子接入(候选池刷新): 来自 zoo472 OOS 筛查短名单 ----
+# 由 oos_framework/screen_results/zoo472/zoo472_ic_screen.csv 筛选:
+#   status==ok & p<0.05 & n_eff_nw>=30, 按修正年化 |ICIR_nw| 降序 Top30,
+#   强制纳入 2 个牛熊反转候选 gtja191_159 / qlib158_std5(战略核心, 即便 ICIR 略低).
+ZOO_SHORTLIST = [
+    "alpha101_012", "qlib158_klow", "gtja191_062", "alpha101_044", "alpha101_013",
+    "gtja191_099", "alpha101_067", "alpha101_045", "gtja191_113", "alpha101_016",
+    "gtja191_083", "alpha101_055", "gtja191_176", "gtja191_032", "alpha101_015",
+    "gtja191_090", "qlib158_corr5", "alpha101_023", "gtja191_038", "gtja191_163",
+    "alpha101_025", "qlib158_cord5", "qlib158_min5", "qlib158_kup", "gtja191_137",
+    "gtja191_016", "alpha101_050", "qlib158_qtld5", "gtja191_036", "gtja191_080",
+    "gtja191_159", "qlib158_std5",
+]
+ZOO_FACTOR_NAMES = list(ZOO_SHORTLIST)
+
+# ---- PIT 修正的基本面因子(候选池刷新 #2: 与价量正交源) ----
+# 由 oos_framework/_build_fund_pit.py 离线预计算(按披露滞后 +45/+120d 前向填充, 杜绝 point-in-time 泄露),
+# 存于 Vibe 项目内 _fund_cache/fund_factors_daily_pit.pkl. 运行时从同一路径读.
+# 通用理论因子(价值/质量/盈利成长), 非"低波红利"定制复合 -> 过 WFA 滚动 IC 防火墙.
+FUND_FACTOR_NAMES = [
+    "f_bm", "f_ep", "f_dy",                 # 价值: 账面市值比 / 盈利市值比 / 股息率
+    "f_roe", "f_roa", "f_gross", "f_netmargin", "f_lev", "f_current", "f_roic", "f_ocf",  # 质量
+    "f_rev_yoy", "f_np_yoy", "f_dnp_yoy", "f_roe_yoy", "f_eps_yoy",  # 盈利/成长
+    "f_agt", "f_acc",                       # 新增正交维度: 资产增长(CMA)/应计(Sloan)
+]
+_FUND_PIT_PATH = (Path(__file__).resolve().parents[2]
+                  / "oos_framework" / "screen_results" / "_fund_cache" / "fund_factors_daily_pit.pkl")
+_FUND_PIT = None
+
+
+def _load_fund_pit():
+    """读 PIT 日线基本面缓存(一次, 模块级缓存复用). 返回 dict[name->date×code DataFrame 或 Series]."""
+    global _FUND_PIT
+    if _FUND_PIT is None:
+        import pickle as _pk
+        with open(_FUND_PIT_PATH, "rb") as fh:
+            blob = _pk.load(fh)
+        _FUND_PIT = blob["data"]
+        print(f"    [fund] 载入 PIT 基本面缓存 {_FUND_PIT_PATH.name} "
+              f"({len(_FUND_PIT)} 表)", flush=True)
+    return _FUND_PIT
+
+
+def build_fundamental_factors(wide):
+    """PIT 修正的基本面因子: 返回与 build_factors 同格式 dict[name->date×code float32].
+
+    值: 从离线 PIT 缓存(已按披露滞后前向填充的日线比率)取, 与 wide 对齐;
+    价值类(f_bm/f_ep/f_dy)用价格 close 当分母, 故必须在分块层面用 w_c 计算.
+    失败因子用全 NaN 列占位(同 build_zoo_factors 的 NaN 填充保护), 保证 FUND_FACTOR_NAMES 每个 key 都存在.
+    """
+    close = wide["close"].astype(np.float32)
+    dates, codes = close.index, close.columns
+    blank = pd.DataFrame(np.nan, index=dates, columns=codes).astype(np.float32)
+    out = {name: blank for name in FUND_FACTOR_NAMES}   # 先全占位, 失败也不缺 key
+    try:
+        data = _load_fund_pit()
+    except Exception as e:
+        print(f"    [fund-skip] 缓存载入失败: {type(e).__name__}: {str(e)[:80]} (全 NaN 占位)", flush=True)
+        return out
+    cclose = close.where(close > 0, np.nan)   # 防除 0 -> inf
+
+    def rg(name):
+        """取缓存比率表并 reindex 到当前 wide 的 (dates, codes). 缺失表返回 blank."""
+        df = data.get(name)
+        if df is None:
+            return blank
+        return df.reindex(index=dates, columns=codes).astype(np.float32)
+
+    def safe(name, frame):
+        try:
+            out[name] = frame.reindex(index=dates, columns=codes).astype(np.float32)
+        except Exception:
+            pass  # 保留占位 blank
+
+    try:
+        bps = rg("bps"); eps = rg("eps")
+        safe("f_bm", bps / cclose)
+        safe("f_ep", eps / cclose)
+        # 股息率: 年均股息(Series, code->值) broadcast 到日期后 / close
+        div_ps = data.get("_avg_div_ps")
+        if div_ps is not None:
+            div_ps = pd.Series(div_ps).reindex(codes)
+            div_mat = pd.DataFrame(np.tile(div_ps.values, (len(dates), 1)),
+                                   index=dates, columns=codes).astype(np.float32)
+            safe("f_dy", div_mat / cclose)
+        # 质量
+        safe("f_roe", rg("roe"))
+        safe("f_roa", rg("roa"))
+        safe("f_gross", rg("gross_margin"))
+        safe("f_netmargin", rg("net_margin"))
+        safe("f_lev", -rg("debt_to_asset"))          # 低杠杆=质量(取负使越高越好)
+        safe("f_current", rg("current_ratio"))
+        safe("f_roic", rg("roic"))
+        safe("f_ocf", rg("ocf_to_revenue"))
+        # 盈利/成长
+        safe("f_rev_yoy", rg("revenue_yoy"))
+        safe("f_np_yoy", rg("net_profit_yoy"))
+        safe("f_dnp_yoy", rg("deduct_np_yoy"))
+        safe("f_roe_yoy", rg("roe_yoy"))
+        safe("f_eps_yoy", rg("eps_yoy"))
+        # 新增正交维度(需 _build_fund_pit 重跑写入 _fund_cache 才有值; 旧缓存缺列->占位 NaN)
+        safe("f_agt", rg("总资产增长率(%)") / 100.0)            # 资产增长(CMA 代理)
+        cf_to_ta = rg("资产的经营现金流量回报率(%)") / 100.0
+        safe("f_acc", rg("roa") - cf_to_ta)                    # 应计 Sloan = (NI-OCF)/TA = roa - OCF/TA
+    except Exception as e:
+        print(f"    [fund-skip] 计算异常: {type(e).__name__}: {str(e)[:80]}", flush=True)
+    return out
+
+
+def build_zoo_factors(wide, shortlist=None):
+    """用注册表 Alpha.compute 算入选 zoo 因子, 返回与 build_factors 同格式的 dict.
+
+    wide: dict[col->DataFrame](date×code), 与 build_factors 同输入(来自 WFA 分块 w_c).
+    派生 returns/vwap/adv 与 screen_zoo_472 完全一致; 行业/roe/accruals/bvps 尽力注入(提升覆盖).
+    失败因子(SkipAlpha/RegistryError/异常)静默跳过, 不阻断其它因子; 返回 dict[name->DataFrame].
+    """
+    if shortlist is None:
+        shortlist = ZOO_SHORTLIST
+    if not shortlist:
+        return {}
+    try:
+        from src.factors.registry import get_default_registry, SkipAlpha, RegistryError
+    except ImportError:
+        import sys as _sys
+        from pathlib import Path as _P
+        _sys.path.insert(0, str(_P(__file__).resolve().parents[2]))  # 仓库根
+        from src.factors.registry import get_default_registry, SkipAlpha, RegistryError
+    close = wide["close"].astype(np.float32)
+    panel = dict(wide)
+    # 派生列(与 screen_zoo_472 一致: returns/vwap/adv 由 OHLCV 精确变换)
+    panel["returns"] = close.pct_change()
+    panel["vwap"] = wide["amount"] / wide["amount"].replace(0, np.nan)
+    panel["adv"] = wide["amount"].rolling(20).mean()
+    # 行业/基本面注入(提升覆盖率; 失败则相关因子自动 SkipAlpha 跳过)
+    _inject_zoo_extra(panel, close)
+    # sector 为字符串矩阵, 不参与 float32 转换
+    panel = {k: (v.astype(np.float32) if k != "sector" else v) for k, v in panel.items()}
+    dates, codes = close.index, close.columns
+    reg = get_default_registry()
+    # 失败时(含 RegistryError: 输出>95% NaN)用全 NaN 列占位, 保证短名单每个 key 都存在于返回 dict.
+    # 否则 WFA 分块写盘循环 `fac_c[f]` 会因缺失 key 抛 KeyError.
+    # 全 NaN 因子在下游 z-score 后仍是 NaN -> 逐折 IC 选择时排末尾、永不被选中, 安全无害.
+    blank = pd.DataFrame(np.nan, index=dates, columns=codes).astype(np.float32)
+    out = {}
+    for aid in shortlist:
+        try:
+            fac = reg.compute(aid, panel)
+            out[aid] = fac.reindex(index=dates, columns=codes).astype(np.float32)
+        except (SkipAlpha, RegistryError, Exception) as e:
+            print(f"    [zoo-skip] {aid}: {type(e).__name__}: {str(e)[:80]} (NaN填充, 不参与选择)", flush=True)
+            out[aid] = blank
+    return out
+
+
+_ZOO_EXTRA = None
+
+
+def _inject_zoo_extra(panel, close):
+    """注入 sector(CSRC) + roe/accruals/bvps(三张表), 读一次缓存复用(避免分块重复读盘)."""
+    global _ZOO_EXTRA
+    if _ZOO_EXTRA is None:
+        d = {}
+        try:
+            csrc = pd.read_parquet("/workspace/stock_worm/data/csrc_industry_map.parquet")
+            d["sector_map"] = dict(zip(csrc["code"], csrc["csrc_industry"]))
+        except Exception:
+            d["sector_map"] = {}
+        try:
+            ff = pd.read_pickle("/workspace/stock_worm/data/fundamentals/fund_factors_daily.parquet")
+            if "ROE" in ff:
+                d["roe"] = ff["ROE"]
+        except Exception:
+            pass
+        try:
+            ab = pd.read_pickle("/workspace/stock_worm/data/fundamentals/fund_accrual_bvps_daily.parquet")
+            for key in ("accruals", "bvps"):
+                if key in ab:
+                    d[key] = ab[key]
+        except Exception:
+            pass
+        _ZOO_EXTRA = d
+    ext = _ZOO_EXTRA
+    if ext.get("sector_map"):
+        sec_vec = close.columns.to_series().map(ext["sector_map"]).to_numpy()
+        panel["sector"] = pd.DataFrame(np.tile(sec_vec, (close.shape[0], 1)),
+                                       index=close.index, columns=close.columns)
+    if "roe" in ext:
+        panel["roe"] = ext["roe"].reindex(index=close.index, columns=close.columns)
+    for key in ("accruals", "bvps"):
+        if key in ext:
+            panel[key] = ext[key].reindex(index=close.index, columns=close.columns)
 
 
 def neutralize_factors(factors, ind_map, wide=None, size_proxy=False):

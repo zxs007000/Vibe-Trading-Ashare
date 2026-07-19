@@ -34,6 +34,15 @@ HEAT = OUT_DIR / "factor_zoo_regime_heatmap.png"
 CACHE = OUT_DIR / "factor_zoo_ic.pkl"
 FWD_HORIZON = 5          # 5日持有 -> 用 5日前向收益算 IC(与回测框架一致)
 
+# 牛熊 regime 注入: WFA 用全市场趋势算一次后 set 进来, build_factors 分块时复用
+# (build_factors 按股票分块调用, 块内 close.mean 只是块均值, 不能当市场趋势, 故由外部注入)
+_MARKET_TREND = None
+def set_market_regime(s):
+    """注入全市场趋势序列(date-indexed, 如 mkt_level/等权均值 的 250d 偏离),
+    供牛熊混合反转因子判定牛/熊/拐点. 不注入时该因子退化为 20d 反转."""
+    global _MARKET_TREND
+    _MARKET_TREND = s
+
 
 def load_wide():
     p = pd.read_parquet(PANEL)
@@ -61,6 +70,20 @@ def build_factors(wide):
     f["rev_20"] = -f["mom_20"]
     f["rev_60"] = -f["mom_60"]
     f["rev_intraday"] = -(close - open_) / open_               # 隔夜/日内反转
+    # ---- 牛熊混合反转(千问方案): 牛=动量分位 / 熊=反转分位 / 拐点=60%反转+40%动量 ----
+    # 用交叉截面分位秩混合: 牛→动量分位, 熊→反转分位, 中间平滑过渡(拐点≈50/50).
+    mom_lt = close / close.shift(250) - 1                       # 1年动量
+    rev_mt = -(close / close.shift(20) - 1)                     # 20日反转
+    mom_r = mom_lt.rank(axis=1, pct=True)
+    rev_r = rev_mt.rank(axis=1, pct=True)
+    if _MARKET_TREND is not None:
+        mt = _MARKET_TREND.reindex(close.index)
+        w_bull = ((mt + 0.15) / 0.30).clip(0, 1)                # 1=强牛(用动量) 0=熊(用反转)
+        wbm = pd.DataFrame(np.tile(w_bull.values.reshape(-1, 1), (1, close.shape[1])),
+                           index=close.index, columns=close.columns)
+        f["bullbear_rev"] = wbm * mom_r + (1 - wbm) * rev_r
+    else:
+        f["bullbear_rev"] = rev_r                               # 无 regime 时退化为 20d 反转
     # ---- 波动 volatility ----
     f["vol_20"] = ret.rolling(20).std()
     f["vol_60"] = ret.rolling(60).std()
@@ -128,6 +151,7 @@ FACTOR_FAMILY = {
     "mom_5": "动量", "mom_20": "动量", "mom_60": "动量", "mom_120": "动量",
     "mom_250": "动量", "mom_12_1": "动量",
     "rev_5": "反转", "rev_20": "反转", "rev_60": "反转", "rev_intraday": "反转",
+    "bullbear_rev": "牛熊反转",
     "vol_20": "波动", "vol_60": "波动", "ret_skew_60": "波动",
     "ivol_60": "特质波动",
     "amihud_20": "流动性", "dolvol_trend": "流动性",

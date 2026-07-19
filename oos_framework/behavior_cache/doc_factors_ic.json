@@ -1,0 +1,18 @@
+{
+  "ic60_full": {
+    "prosperity": 0.0048,
+    "low_att": 0.1225
+  },
+  "ic60_hs300": {
+    "prosperity": 0.003,
+    "low_att": 0.0918
+  },
+  "ic60_non_hs300": {
+    "prosperity": 0.0053,
+    "low_att": 0.1323
+  },
+  "ic60_size_recent": {
+    "size": NaN
+  },
+  "size_window": "2018-01-01"
+}
