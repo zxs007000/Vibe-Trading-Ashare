@@ -1,0 +1,12 @@
+# XGBoost 因子挖掘 WFA 原型依赖
+# 注: Vibe-Trading-Ashare 顶层 pyproject 已含 pandas<3 / numpy / scikit-learn / matplotlib,
+#     此处补齐本管线专有依赖(xgboost / shap)与 parquet 读写后端。
+xgboost>=2.0,<4.0
+shap>=0.40
+pandas>=2.0,<3.0
+numpy>=1.24
+scikit-learn>=1.3
+scipy>=1.10
+pyarrow>=10.0
+fastparquet>=2023.0
+matplotlib>=3.7
