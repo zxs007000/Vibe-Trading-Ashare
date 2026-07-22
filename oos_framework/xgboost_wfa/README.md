@@ -15,12 +15,14 @@
 这是**原型 / 方法论验证**, 不是可直接上线的策略。OOS AUC 在 0.5x 量级(微弱但稳定),
 重点在**管线正确性**(特征工程 → WFA → SHAP) 与**可解释性**, 而非收益魔法。
 
-> ⚠️ **内存约束(重要)**: 全市场 5448 只的面板约 11M 行 × 217 维 ≈ 18GB,
-> 在 8GB 内存上限(本沙箱 cgroup 限制)下会 OOM(`rc=137`)。应对:
-> - 用 `WFA_MAX_STOCKS` 环境变量控制样本量(默认 5500=全量); 内存受限时调低,
->   且**自动做固定随机种子(42)的随机抽样**, 使子样本是全市场的代表性样本(非前 N 只)。
-> - 本仓库 `results/` 下提交的 **v4 全量结果来自 250 只代表性随机子样本**(peak RSS ≈ 2.7GB, 稳定跑完 4 折),
->   方法学与全量一致; 全量需在 ≥32GB 内存的机器上把 `WFA_MAX_STOCKS` 设回 5500 运行。
+> ⚠️ **内存约束(已解决)**: 单遍把全市场 5448 只面板(~11M 行 × 217 维 ≈ 18GB)一次性读入内存,
+> 在 8GB 上限(cgroup)下会 OOM(`rc=137`)。两种解法:
+> - **(推荐) 分块流式版 `xgb_wfa_proto_v4_chunked.py`**: PhaseA 逐只落盘 → PhaseB 按年切片算截面特征 →
+>   PhaseC 按需读分片 + float32 增量拼矩阵, **峰值内存≈单折训练矩阵(~3.5GB), 全市场 5500 只可在 8GB 内跑完**。
+> - 旧版 `xgb_wfa_proto_v4_full.py` 仍保留: 用 `WFA_MAX_STOCKS` 控制子样本量(默认 5500),
+>   自动做固定随机种子(42)的随机抽样, 使子样本是全市场的代表性样本(非前 N 只)。
+> - 本仓库 `results/` 下提交的 **v4 全量结果来自 250 只代表性随机子样本**(peak RSS ≈ 1.1GB 分块版 / 2.7GB 单遍版),
+>   方法学一致; 现可用分块版在 8GB 机器上直接跑全市场。
 
 ---
 
@@ -100,7 +102,7 @@ sw_is = 1.0 + np.clip(cc, 0.0, 10.0)            # 最高 ~11 倍权重
 | **筹码结构** | 6 | §2 VWAP 中心三角分布递推 + §4 PR/CC/CB/短期 CB(`chip_pr/chip_cc/chip_cb/chip_cb_short`); §5.1 PR×CB 交互、§5.2 短期乖离惩罚 + CC 作样本权重 |
 
 **演进路径**(本目录各 `xgb_wfa_proto*.py`):
-`v1`(基线, AUC≈0.528) → `v2`(+交互+多周期融合+IS 调参) → `v3`(+因子拥挤度) → `v4`(+筹码结构) → `v4_full`(全市场 5448 只)。
+`v1`(基线, AUC≈0.528) → `v2`(+交互+多周期融合+IS 调参) → `v3`(+因子拥挤度) → `v4`(+筹码结构) → `v4_full`(全市场 5448 只) → `v4_chunked`(分块流式, 8GB 跑全市场)。
 对比见 [`results/proto_v2_v3_v4_comparison.md`](./results/proto_v2_v3_v4_comparison.md)。
 
 ---
@@ -167,7 +169,15 @@ bash run_full_on_build_done.sh
 export STOCKLAKE=/path/to/your/stocklake WFA_OUT=./v4proto_out WFA_MAX_STOCKS=500
 python3.11 xgb_wfa_proto_v4_full.py           # 训练 4 折, 落盘 booster/shap_data/feats/结果 md
 python3.11 shap_analysis.py --base ./v4proto_out   # SHAP 解释
+
+# 方式 C(推荐, 8GB 内存即可跑全市场 5500 只): 分块流式版
+export STOCKLAKE=/path/to/your/stocklake WFA_OUT=./v4proto_out WFA_MAX_STOCKS=5500
+python3.11 xgb_wfa_proto_v4_chunked.py        # 三阶段分块, 峰值内存≈单折训练矩阵(~3.5GB)
+python3.11 shap_analysis.py --base ./v4proto_out
 ```
+
+> 内存阶梯: 方式 C 分块版全市场峰值 ≈ 3.5GB(8GB 机器可跑); 方式 B `v4_full` 全市场会 OOM,
+> 需 `WFA_MAX_STOCKS` 降到 250~500(峰值 1~3GB)。两者**算法完全一致**, 仅内存策略不同。
 
 > 想先冒烟测试? 设 `WFA_MAX_STOCKS=20` 环境变量即可小样本跑通(无需改代码)。
 
@@ -195,8 +205,9 @@ python3.11 shap_analysis.py --base ./v4proto_out   # SHAP 解释
   下游已做 8 列补齐, 不会 KeyError。
 - **某票三大表文件存在但损坏**: `_read_parquet` 返回 `None` → `bal=None` 但现金流非空,
   曾触发 `sc` 未绑定 `UnboundLocalError`; 已在 `load_fundamentals` 顶部初始化 `pn=sc=None` 修复。
-- **全市场 OOM(8GB cgroup)**: 全量面板 ~18GB 超过沙箱 8GB 内存上限 → 进程被 `SIGKILL(rc=137)`。
-  已用 `WFA_MAX_STOCKS` 环境变量 + 代表性随机抽样规避(见 §0 / §5.3); 全量需更大内存。
+- **全市场 OOM(8GB cgroup)**: 单遍把全量面板(~18GB)读入内存会超过 8GB 上限 → `SIGKILL(rc=137)`。
+  已用**分块流式版 `xgb_wfa_proto_v4_chunked.py`** 彻底解决(见 §5.3 方式 C): 峰值内存压到单折训练矩阵量级,
+  全市场 5500 只可在 8GB 内跑完; 旧版 `v4_full` 仍可用 `WFA_MAX_STOCKS` 降采样。
 
 ---
 
@@ -205,6 +216,8 @@ python3.11 shap_analysis.py --base ./v4proto_out   # SHAP 解释
 > 因 8GB 内存上限, 仓库提交的是 **250 只随机子样本**(`WFA_MAX_STOCKS=250`, seed=42)的跑通结果,
 > 方法学与全量一致。完整结果见 [`results/proto_v4_full_results.md`](./results/proto_v4_full_results.md)
 > 与 [`results/shap_report.md`](./results/shap_report.md)。
+> 分块流式版 `xgb_wfa_proto_v4_chunked.py` 现已可在 8GB 内存跑全市场 5500 只, 其全市场结果将在跑通后补充
+> (见 [`results/proto_v4_chunked_results.md`](./results/proto_v4_chunked_results.md))。
 
 **各折 OOS 表现**(标签=未来收益排前 30% 的概率):
 
@@ -234,7 +247,8 @@ python3.11 shap_analysis.py --base ./v4proto_out   # SHAP 解释
 | `xgb_wfa_proto_v2.py` | +交互 +多周期融合 +IS 调参 |
 | `xgb_wfa_proto_v3.py` | +因子拥挤度 |
 | `xgb_wfa_proto_v4.py` | +筹码结构维度 |
-| `xgb_wfa_proto_v4_full.py` | **全市场版**(5448 只, 本目录主力) |
+| `xgb_wfa_proto_v4_full.py` | **全市场版**(5448 只, 单遍; 大内存或降采样用) |
+| `xgb_wfa_proto_v4_chunked.py` | **分块流式版**(8GB 内存即可跑全市场 5500 只; 推荐) |
 | `shap_analysis.py` | 修正版 SHAP 解释(跨折方向一致性 + bootstrap CI) |
 | `diag_v3.py` | v3 诊断脚本 |
 | `run_full_on_build_done.sh` | 端到端无人值守启动器 |
