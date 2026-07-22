@@ -290,6 +290,10 @@ def backtest(oos_detail, top_frac=0.3):
     ann_b = (bnav.iloc[-1] / bnav.iloc[0]) ** (252.0 / n) - 1.0 if n > 1 else np.nan
     vol = daily.std() * np.sqrt(252)
     sharpe = (daily.mean() * 252) / vol if vol and vol > 0 else np.nan
+    # 最大回撤: 净值从峰值到谷值的最大跌幅
+    max_dd = float((nav / nav.cummax() - 1.0).min())
+    max_dd_b = float((bnav / bnav.cummax() - 1.0).min())
+    calmar = (ann / abs(max_dd)) if max_dd < 0 else np.nan
     return {
         "n_days": n, "years": round(n / 252.0, 2),
         "start": str(daily.index.min().date()), "end": str(daily.index.max().date()),
@@ -297,6 +301,8 @@ def backtest(oos_detail, top_frac=0.3):
         "tot_ret": round(float(nav.iloc[-1] / nav.iloc[0] - 1), 4),
         "tot_base": round(float(bnav.iloc[-1] / bnav.iloc[0] - 1), 4),
         "ann_vol": round(float(vol), 4), "sharpe": round(float(sharpe), 3),
+        "max_dd": round(max_dd, 4), "max_dd_base": round(max_dd_b, 4),
+        "calmar": round(float(calmar), 3),
     }
 
 
@@ -338,6 +344,8 @@ def write_results(out_path, meta, rows, imp_acc, folds, n_used, bt=None):
         lines.append(f"| **年化收益率** | **{bt['ann_ret']:+.1%}** | **{bt['ann_base']:+.1%}** |")
         lines.append(f"| 年化波动率 | {bt['ann_vol']:.1%} | — |")
         lines.append(f"| 年化夏普(无风险=0) | {bt['sharpe']:.2f} | — |")
+        lines.append(f"| **最大回撤** | **{bt['max_dd']:+.1%}** | **{bt['max_dd_base']:+.1%}** |")
+        lines.append(f"| Calmar(年化/|回撤|) | {bt['calmar']:.2f} | — |")
     lines.append(f"\n---\n*由 `factor_mining/factor_wfa.py` 生成*")
     full = "\n".join(lines)
     if out_path:
