@@ -45,7 +45,7 @@ OUT = os.environ.get("WFA_OUT", os.path.join(os.path.dirname(os.path.abspath(__f
 os.makedirs(OUT, exist_ok=True)
 # 注: cnstock(data.cnstock.com) 在构建期被我们的高并发爬取触发整域 403 封禁, 暂不可用。
 # 基本面改回东财三大表(已建 95%+)派生, 见 load_fundamentals()。
-MAX_STOCKS = 5500   # 全量：覆盖全部「daily∩三表齐全」的票（~5448）
+MAX_STOCKS = int(os.environ.get("WFA_MAX_STOCKS", 5500))   # 全量≈5448; 内存受限时用 WFA_MAX_STOCKS 调低(代表性随机子样本)
 TRAIN_YEARS = 3
 TEST_YEARS = 1
 STEP_YEARS = 1
@@ -79,7 +79,15 @@ def eligible_codes():
     inc = {f[:-8] for f in os.listdir(INCOME) if f.endswith(".parquet")}
     cash = {f[:-8] for f in os.listdir(CASH) if f.endswith(".parquet")}
     bal = {f[:-8] for f in os.listdir(BAL) if f.endswith(".parquet")}
-    return sorted(daily & inc & cash & bal)[:MAX_STOCKS]
+    codes = sorted(daily & inc & cash & bal)
+    if MAX_STOCKS < len(codes):
+        # 子样本: 固定随机种子抽样, 使任意 MAX_STOCKS 都是全市场的**代表性随机样本**,
+        # 避免 sorted()[:N] 偏向低代码号(沪市 600xxx 前置)带来的结构性偏差。
+        # 注: 全市场 5448 只的面板(~11M行×208维)在 8GB cgroup 内存上限下会 OOM,
+        # 故默认用子样本; 更大内存或分块处理时可调高 WFA_MAX_STOCKS。
+        import random
+        codes = random.Random(42).sample(codes, MAX_STOCKS)
+    return codes
 
 
 def _read_parquet(path):

@@ -13,6 +13,8 @@ node_modules/
 
 # Backtest output artifacts
 results/
+# 例外: XGBoost WFA 原型的交付物(结果报告/图表/特征表)需入库
+!oos_framework/xgboost_wfa/results/
 
 .env
 agent/.env

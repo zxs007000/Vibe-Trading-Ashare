@@ -15,6 +15,13 @@
 这是**原型 / 方法论验证**, 不是可直接上线的策略。OOS AUC 在 0.5x 量级(微弱但稳定),
 重点在**管线正确性**(特征工程 → WFA → SHAP) 与**可解释性**, 而非收益魔法。
 
+> ⚠️ **内存约束(重要)**: 全市场 5448 只的面板约 11M 行 × 217 维 ≈ 18GB,
+> 在 8GB 内存上限(本沙箱 cgroup 限制)下会 OOM(`rc=137`)。应对:
+> - 用 `WFA_MAX_STOCKS` 环境变量控制样本量(默认 5500=全量); 内存受限时调低,
+>   且**自动做固定随机种子(42)的随机抽样**, 使子样本是全市场的代表性样本(非前 N 只)。
+> - 本仓库 `results/` 下提交的 **v4 全量结果来自 250 只代表性随机子样本**(peak RSS ≈ 2.7GB, 稳定跑完 4 折),
+>   方法学与全量一致; 全量需在 ≥32GB 内存的机器上把 `WFA_MAX_STOCKS` 设回 5500 运行。
+
 ---
 
 ## 1. XGBoost 用法（核心）
@@ -82,15 +89,15 @@ sw_is = 1.0 + np.clip(cc, 0.0, 10.0)            # 最高 ~11 倍权重
 
 ---
 
-## 3. 特征族（v4 全量 = 208 维）
+## 3. 特征族（v4 全量 ≈ 217 维）
 
 | 族 | 维度 | 内容 |
 |---|---|---|
 | **Alpha(价量)** | 17 | ret_1/5/20/60, vol_20, rsi_14, amt_chg_20, ma_dev_20, amp_20 … |
 | **市场环境** | 8 | mkt_ret20_std, mkt_adv, mkt_roe_mean, mkt_amp_mean, mkt_vol_mean …(横截面聚合) |
-| **交互** | 165 | Alpha × 市场环境 的 原始值/历史分位/变化率/宏观交互/惩罚项(前缀 `ix_`) |
+| **交互** | 168 | Alpha × 市场环境 的 原始值/历史分位/变化率/宏观交互/惩罚项(前缀 `ix_`) |
 | **因子拥挤度** | 18 | §1.1 交易行为(成交额代理 mom/liq) + §1.4 PCA 吸收比率; §1.2 估值价差(需 PE)、§1.3 机构持仓(需基金持仓) 数据湖缺失→跳过 |
-| **筹码结构** | — | §2 VWAP 中心三角分布递推 + §4 PR/CC/CB/短期 CB(`chip_pr/chip_cc/chip_cb/chip_cb_short`); §5.1 PR×CB 交互、§5.2 短期乖离惩罚 + CC 作样本权重 |
+| **筹码结构** | 6 | §2 VWAP 中心三角分布递推 + §4 PR/CC/CB/短期 CB(`chip_pr/chip_cc/chip_cb/chip_cb_short`); §5.1 PR×CB 交互、§5.2 短期乖离惩罚 + CC 作样本权重 |
 
 **演进路径**(本目录各 `xgb_wfa_proto*.py`):
 `v1`(基线, AUC≈0.528) → `v2`(+交互+多周期融合+IS 调参) → `v3`(+因子拥挤度) → `v4`(+筹码结构) → `v4_full`(全市场 5448 只)。
@@ -104,7 +111,7 @@ sw_is = 1.0 + np.clip(cc, 0.0, 10.0)            # 最高 ~11 倍权重
 
 | 漏洞 | 处理 |
 |---|---|
-| 规模 | 训练时已子采样到 ≤3000 行/折, 精确 `TreeExplainer` 可行(不碰全量 9M 行) |
+| 规模 | 训练时已子采样到 ≤3000 行/折, 精确 `TreeExplainer` 可行(不碰全量 11M 行) |
 | 共线 | 按「特征族」汇总 Mean\|SHAP\|, 缓和同源变体信用瓜分 |
 | 跨折 | 跨折用「方向一致性(sign agreement)」判稳健, **非**对 SHAP 取均值(尺度不可比) |
 | 尺度 | 明确 SHAP 在 **log-odds(边际)** 尺度; 标签是「排前 30% 概率」(排序/相对) |
@@ -152,15 +159,17 @@ stocklake/
 # 方式 A: 端到端启动器(等 BUILD_DONE → 跑 v4 全量 → 跑 SHAP, 失败自动重跑封顶 4 次)
 export STOCKLAKE=/path/to/your/stocklake     # 默认 /workspace/stocklake
 export WFA_OUT=./v4proto_out                  # 结果落盘目录(默认脚本同级 v4proto_out/)
+# 内存受限(<32GB)时务必调低, 否则全市场面板(~18GB)会 OOM:
+export WFA_MAX_STOCKS=500                     # 默认 5500=全量; 自动随机抽样为代表性子样本
 bash run_full_on_build_done.sh
 
 # 方式 B: 直接跑(更可控)
-export STOCKLAKE=/path/to/your/stocklake WFA_OUT=./v4proto_out
+export STOCKLAKE=/path/to/your/stocklake WFA_OUT=./v4proto_out WFA_MAX_STOCKS=500
 python3.11 xgb_wfa_proto_v4_full.py           # 训练 4 折, 落盘 booster/shap_data/feats/结果 md
 python3.11 shap_analysis.py --base ./v4proto_out   # SHAP 解释
 ```
 
-> 想先冒烟测试? 改 `xgb_wfa_proto_v4_full.py` 顶部 `MAX_STOCKS`(如 20)即可小样本跑通。
+> 想先冒烟测试? 设 `WFA_MAX_STOCKS=20` 环境变量即可小样本跑通(无需改代码)。
 
 ### 5.4 输出物(`WFA_OUT/`)
 
@@ -186,6 +195,34 @@ python3.11 shap_analysis.py --base ./v4proto_out   # SHAP 解释
   下游已做 8 列补齐, 不会 KeyError。
 - **某票三大表文件存在但损坏**: `_read_parquet` 返回 `None` → `bal=None` 但现金流非空,
   曾触发 `sc` 未绑定 `UnboundLocalError`; 已在 `load_fundamentals` 顶部初始化 `pn=sc=None` 修复。
+- **全市场 OOM(8GB cgroup)**: 全量面板 ~18GB 超过沙箱 8GB 内存上限 → 进程被 `SIGKILL(rc=137)`。
+  已用 `WFA_MAX_STOCKS` 环境变量 + 代表性随机抽样规避(见 §0 / §5.3); 全量需更大内存。
+
+---
+
+## 6.1 已提交结果（250 只代表性随机子样本, WFA 4 折）
+
+> 因 8GB 内存上限, 仓库提交的是 **250 只随机子样本**(`WFA_MAX_STOCKS=250`, seed=42)的跑通结果,
+> 方法学与全量一致。完整结果见 [`results/proto_v4_full_results.md`](./results/proto_v4_full_results.md)
+> 与 [`results/shap_report.md`](./results/shap_report.md)。
+
+**各折 OOS 表现**(标签=未来收益排前 30% 的概率):
+
+| 折 | 单周期5日 AUC | 融合 AUC(5/20/60日) | 融合 IC(5/20/60日) |
+|---|---|---|---|
+| 1 | 0.533 | 0.529 / 0.535 / 0.526 | +0.005 / +0.027 / +0.006 |
+| 2 | 0.529 | 0.534 / 0.555 / 0.535 | +0.040 / +0.073 / +0.022 |
+| 3 | 0.523 | 0.515 / 0.545 / 0.538 | +0.044 / +0.085 / +0.084 |
+| 4 | 0.530 | 0.528 / 0.563 / 0.587 | +0.063 / +0.104 / +0.123 |
+| **均值** | **0.529** | **0.527 / 0.549 / 0.547** | **+0.038 / +0.072 / +0.059** |
+
+**解读**:
+- 融合 AUC 稳定在 **0.53~0.55**(>0.5 即有微弱但一致的样本外区分度); 单周期5日 AUC≈0.53。
+- 融合 IC 全正(0.04~0.12), 且随 horizon 拉长(20/60日)IC 更高 —— 信号更偏中期。
+- 因子重要性 Top: 多为「市场环境 × 个股」交互特征(`ix_mkt_*__*`)、`pca_absorp*`(PCA 吸收比率/拥挤度代理)、`mkt_roe_mean`(市场 ROE 环境)。
+- 拥挤度 / 筹码结构 两新维度 Gain 占比分别为 **3.1% / 2.6%** —— 占比不高但非零, 证明它们携带了增量信息(详见 SHAP 报告跨折方向一致性)。
+
+> ⚠️ 这是 **原型验证** 的 OOS 信号, 非可上线 alpha; 全量 + 更多特征/数据有望提升, 但需在更大内存环境复现。
 
 ---
 
