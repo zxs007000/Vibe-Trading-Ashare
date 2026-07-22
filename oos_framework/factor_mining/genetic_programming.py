@@ -138,7 +138,7 @@ def evolve(data, fwd_dict, pop_size=40, generations=20, seed=42,
     fits = [_fitness(ind, data, fwd_dict) for ind in pop]
     front = _non_dominated(pop, fits)
     pareto = sorted(
-        [{"expr": expr_to_str(pop[i]), "icir20": round(fits[i][0], 3),
+        [{"expr": expr_to_str(pop[i]), "expr_tuple": pop[i], "icir20": round(fits[i][0], 3),
           "turnover": round(fits[i][1], 3), "ic20": round(fits[i][2], 4)}
          for i in front],
         key=lambda r: r["icir20"], reverse=True)

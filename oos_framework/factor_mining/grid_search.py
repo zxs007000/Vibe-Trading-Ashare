@@ -54,8 +54,10 @@ def grid_search(data: dict[str, pd.DataFrame], fwd_dict: dict[int, pd.DataFrame]
                 for cs in cs_ops:
                     try:
                         factor = evaluate_expr(base, data)
+                        full_tuple = base
                         if cs:
                             factor = CS_OPS[cs](factor)
+                            full_tuple = ("cs", cs, base)
                         valid = factor_valid_ratio(factor)
                         if valid < min_valid:
                             continue
@@ -66,6 +68,7 @@ def grid_search(data: dict[str, pd.DataFrame], fwd_dict: dict[int, pd.DataFrame]
                         expr_str = expr_to_str_wrap(base, cs)
                         records.append({
                             "expr": expr_str,
+                            "expr_tuple": full_tuple,
                             "ic5": round(ev[5]["ic"], 4),
                             "ic20": round(e20["ic"], 4),
                             "ic60": round(ev[60]["ic"], 4),

@@ -122,3 +122,29 @@ python factor_mining/run_mining.py --out results.md # 写入 markdown
 - 遗传规划去除 DEAP 依赖、改为 NSGA-II 式 Pareto 排序；
 - LLM 钩子从「仅 OpenAI」改为「本地启发式默认 + 可选 LLM」，无 key 也能完整复现；
 - MCTS 在表达式树上搜索（而非字符串拼接），并修复了叶子识别/动作去重等工程坑。
+
+---
+
+## 6. 因子 → XGBoost WFA 样本外验证（`factor_wfa.py`）
+
+挖出的因子表达式直接作为特征，喂进 `xgboost_wfa` 同款 WFA 框架做**样本外(OOS)验证**，
+检验「机器挖的因子」是否真有区分度（而非仅样本内 IC 好看）。口径与 `xgb_wfa_proto_v4_chunked.py` 完全对齐：
+标签 = 未来收益排前 30%（5/20/60 日，T+1 起算防泄露）；WFA 4 折（训练 3y / 测试 1y / 步长 1y）；
+每折 IS 内 RandomizedSearchCV 调参 + 3 horizon 模型 + 融合概率，评 OOS AUC / IC。
+
+```bash
+cd oos_framework
+python factor_mining/factor_wfa.py collect --mine 300          # 四方向挖掘并统计因子总数
+python factor_mining/factor_wfa.py wfa --stocks 1500 --out factor_mining/FACTOR_WFA_RESULTS.md
+python factor_mining/factor_wfa.py all --mine 300 --stocks 1500   # 一步到位
+```
+
+最近一次（`collect` 300 只挖掘 / `wfa` 1500 只验证）：
+
+- **发现因子（正 IC 去重）共 55 个**：方向1 网格 28 + 方向2 遗传规划 15 + 方向3 MCTS 12；
+- **OOS 融合 AUC ≈ 0.52**（与 v4 全市场 217 维特征的 ~0.53 同量级，弱但稳定 > 0.5）；
+- **融合 IC 在后期折（2023-2025）转正**，20 日最强（折4 IC=+0.065/+0.074），与 v4「信号偏中期、近期强于早期」结论一致；
+- 因子重要性 Top 由 `ts_pct(ret_*)`、`ts_min(high,*)` 等动量/高位类主导，属合理 alpha 结构。
+
+> 完整表格见 `FACTOR_WFA_RESULTS.md`。这证明 factor_mining 工具箱产出的因子携带**真实（虽弱）的样本外预测力**，
+> 可作为 `xgboost_wfa` 的候选特征池进一步融合拥挤度 / 筹码结构维度提质。显微镜结构（方向4）特征需接入真实 Level-2 后方可纳入本验证。

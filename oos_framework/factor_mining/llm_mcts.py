@@ -314,7 +314,7 @@ class MCTSAgent:
         while stack:
             n = stack.pop()
             icir, ic, to = self._evaluate(n.expr)
-            out.append({"expr": expr_to_str(n.expr), "icir": round(icir, 3),
+            out.append({"expr": expr_to_str(n.expr), "expr_tuple": n.expr, "icir": round(icir, 3),
                         "ic20": round(ic, 4), "turnover": round(to, 3),
                         "visits": n.visits})
             stack.extend(n.children)
