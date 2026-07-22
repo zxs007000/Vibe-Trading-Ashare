@@ -158,6 +158,8 @@ def build_feature_table(codes, exprs):
         d = {"code": s}
         for hz in HORIZONS:
             d[f"fwd_ret_{hz}"] = (c.shift(-hz) / c.shift(-1) - 1.0).astype("float32").values
+        # fwd_ret_1: T 日收盘买入、T+1 日收盘卖出收益(仅用于回测持仓, 防泄露用 shift(-1))
+        d["fwd_ret_1"] = (c.shift(-1) / c - 1.0).astype("float32").values
         for name, panel in panels.items():
             d[name] = panel[s].astype("float32").values if panel is not None else np.full(n, np.nan, "float32")
         recs.append(pd.DataFrame(d, index=dates))
@@ -215,7 +217,7 @@ def run_wfa(long, feat_cols, train_cap=500000):
     folds = wfa_folds(long["date"])
     print(f"[wfa] 折数 {len(folds)}: " + " | ".join(
         f"折{i+1} OOS {s.date()}~{e.date()}" for i, (_, _, s, e) in enumerate(folds)), flush=True)
-    rows, imp_acc = [], {}
+    rows, imp_acc, oos_detail = [], {}, []
     for i, (is_s, is_e, oos_s, oos_e) in enumerate(folds, 1):
         is_mask = (long["date"] >= is_s) & (long["date"] < is_e)
         oos_mask = (long["date"] >= oos_s) & (long["date"] < oos_e)
@@ -254,13 +256,54 @@ def run_wfa(long, feat_cols, train_cap=500000):
               f"融合 AUC=[{row['auc_fuse_5']:.3f},{row['auc_fuse_20']:.3f},{row['auc_fuse_60']:.3f}] "
               f"IC=[{row['ic_fuse_5']:+.4f},{row['ic_fuse_20']:+.4f},{row['ic_fuse_60']:+.4f}]", flush=True)
         rows.append(row)
-    return rows, imp_acc, folds
+        # 收集 OOS 预测明细(date, code, 融合概率, 次日收益)供样本外回测
+        seg = pd.DataFrame({
+            "date": osd["date"].values,
+            "code": osd["code"].values,
+            "fused": fused,
+            "fwd_ret_1": osd["fwd_ret_1"].values,
+        })
+        oos_detail.append(seg)
+    oos_detail = pd.concat(oos_detail, ignore_index=True) if oos_detail else pd.DataFrame()
+    return rows, imp_acc, folds, oos_detail
+
+
+# ---------------------------------------------------------------------------
+# 样本外滚动回测: 用各折 OOS 融合概率做 top-30% 每日再平衡组合
+# ---------------------------------------------------------------------------
+def backtest(oos_detail, top_frac=0.3):
+    if oos_detail is None or len(oos_detail) == 0:
+        return None
+    df = oos_detail.dropna(subset=["fused", "fwd_ret_1"]).copy()
+    if len(df) == 0:
+        return None
+    df["rk"] = df.groupby("date")["fused"].rank(pct=True, ascending=False)  # 1=预测最高
+    top = df[df["rk"] <= top_frac]
+    daily = top.groupby("date")["fwd_ret_1"].mean()          # 组合日收益(等权)
+    base = df.groupby("date")["fwd_ret_1"].mean()            # 全市场等权基准
+    daily = daily.sort_index()
+    base = base.reindex(daily.index).fillna(0.0)
+    nav = (1.0 + daily).cumprod()
+    bnav = (1.0 + base).cumprod()
+    n = len(daily)
+    ann = (nav.iloc[-1] / nav.iloc[0]) ** (252.0 / n) - 1.0 if n > 1 else np.nan
+    ann_b = (bnav.iloc[-1] / bnav.iloc[0]) ** (252.0 / n) - 1.0 if n > 1 else np.nan
+    vol = daily.std() * np.sqrt(252)
+    sharpe = (daily.mean() * 252) / vol if vol and vol > 0 else np.nan
+    return {
+        "n_days": n, "years": round(n / 252.0, 2),
+        "start": str(daily.index.min().date()), "end": str(daily.index.max().date()),
+        "ann_ret": round(float(ann), 4), "ann_base": round(float(ann_b), 4),
+        "tot_ret": round(float(nav.iloc[-1] / nav.iloc[0] - 1), 4),
+        "tot_base": round(float(bnav.iloc[-1] / bnav.iloc[0] - 1), 4),
+        "ann_vol": round(float(vol), 4), "sharpe": round(float(sharpe), 3),
+    }
 
 
 # ---------------------------------------------------------------------------
 # 结果落盘
 # ---------------------------------------------------------------------------
-def write_results(out_path, meta, rows, imp_acc, folds, n_used):
+def write_results(out_path, meta, rows, imp_acc, folds, n_used, bt=None):
     rec = pd.DataFrame(rows)
     mean = rec.mean(numeric_only=True).round(4)
     lines = []
@@ -284,6 +327,17 @@ def write_results(out_path, meta, rows, imp_acc, folds, n_used):
         lines.append("|---|---|")
         for k, v in top:
             lines.append(f"| `{k}` | {v:.1f} |")
+    if bt:
+        lines.append("\n## 样本外策略回测(top-30% 每日再平衡, 毛收益未扣费)\n")
+        lines.append(f"- 区间: **{bt['start']} ~ {bt['end']}** ({bt['years']} 年, {bt['n_days']} 交易日, "
+                     f"覆盖 WFA 全部 OOS 窗, 无前视泄露)")
+        lines.append(f"- 策略: 每日按模型融合概率排序, 买入前 30% 等权, 持有一日(T+1 收益), 次日再平衡\n")
+        lines.append("| 指标 | 因子组合 | 全市场等权基准 |")
+        lines.append("|---|---|---|")
+        lines.append(f"| 总收益 | {bt['tot_ret']:+.1%} | {bt['tot_base']:+.1%} |")
+        lines.append(f"| **年化收益率** | **{bt['ann_ret']:+.1%}** | **{bt['ann_base']:+.1%}** |")
+        lines.append(f"| 年化波动率 | {bt['ann_vol']:.1%} | — |")
+        lines.append(f"| 年化夏普(无风险=0) | {bt['sharpe']:.2f} | — |")
     lines.append(f"\n---\n*由 `factor_mining/factor_wfa.py` 生成*")
     full = "\n".join(lines)
     if out_path:
@@ -351,10 +405,15 @@ def main():
 
         codes = list_stocks(args.stocks)
         long, feat_cols = build_feature_table(codes, exprs)
-        rows, imp_acc, folds = run_wfa(long, feat_cols)
+        rows, imp_acc, folds, oos_detail = run_wfa(long, feat_cols)
+        bt = backtest(oos_detail)
+        if bt:
+            print(f"\n[回测] {bt['start']}~{bt['end']} 年化 {bt['ann_ret']:+.1%} | "
+                  f"总收益 {bt['tot_ret']:+.1%} | 夏普 {bt['sharpe']:.2f} | "
+                  f"基准年化 {bt['ann_base']:+.1%}")
         full, rec, mean = write_results(
             args.out, {"mine": args.mine, "stocks": args.stocks,
-                       "n_total": len(factors)}, rows, imp_acc, folds, len(exprs))
+                       "n_total": len(factors)}, rows, imp_acc, folds, len(exprs), bt=bt)
         print("\n均值:", mean.to_string())
 
 
