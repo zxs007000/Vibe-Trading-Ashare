@@ -134,8 +134,11 @@ def collect_factors(n_mine: int = 300, seeds=(42, 7, 123)):
 # ---------------------------------------------------------------------------
 # 构建特征长表(日期×股票, 每行一个观测)
 # ---------------------------------------------------------------------------
-def build_feature_table(codes, exprs):
-    """exprs: list of (expr_str, expr_tuple). 返回 long DataFrame(含因子+标签)。"""
+def build_feature_table(codes, exprs, return_close=False):
+    """exprs: list of (expr_str, expr_tuple). 返回 long DataFrame(含因子+标签)。
+
+    return_close=True 时额外返回 close 面板(date×stock), 供防御门控构建市场等权指数。
+    """
     t0 = time.time()
     data = derive_variables(load_base_data(codes))
     close = data["close"]
@@ -189,6 +192,8 @@ def build_feature_table(codes, exprs):
     long[feat_cols] = (long[feat_cols] - mu) / (sd + 1e-8)
     del mu, sd, g
     gc.collect()
+    if return_close:
+        return long, feat_cols, close
     return long, feat_cols
 
 
@@ -271,7 +276,15 @@ def run_wfa(long, feat_cols, train_cap=500000):
 # ---------------------------------------------------------------------------
 # 样本外滚动回测: 用各折 OOS 融合概率做 top-30% 每日再平衡组合
 # ---------------------------------------------------------------------------
-def backtest(oos_detail, top_frac=0.3):
+def backtest(oos_detail, top_frac=0.3, gate=False, crisis=None, stress=None,
+             crisis_pos=0.60, def_ann=0.04, max_pos_reduce=0.20):
+    """样本外滚动回测: 用融合概率(或冻结因子信号)做 top-30% 每日再平衡组合。
+
+    gate=True 时叠加**防御门控**(对齐用户 defensive_gating.py 双层门):
+      · 右侧确认 crisis(市场等权指数跌破250日线-10% 或 波动z>2)→ 仓位降到 crisis_pos(0.60, 不归零)。
+      · 左侧缓冲 stress∈[0,1](指数跌破250日线的深度, 无宏观时作左翼代理)→ 仓位最多降 max_pos_reduce(20%)。
+      空仓部分吃 def_ann 年化(4%)防御资产收益; 基准(全市场等权)不受影响, 用于公平对照。
+    """
     if oos_detail is None or len(oos_detail) == 0:
         return None
     df = oos_detail.dropna(subset=["fused", "fwd_ret_1"]).copy()
@@ -283,6 +296,16 @@ def backtest(oos_detail, top_frac=0.3):
     base = df.groupby("date")["fwd_ret_1"].mean()            # 全市场等权基准
     daily = daily.sort_index()
     base = base.reindex(daily.index).fillna(0.0)
+    n_crisis_days = 0
+    if gate and crisis is not None:
+        cr = crisis.reindex(daily.index).fillna(False).astype(float).values
+        n_crisis_days = int((cr > 0.5).sum())
+        st = stress.reindex(daily.index).fillna(0.0).values if stress is not None else 0.0
+        # 急性危机→crisis_pos; 否则按左翼压力缓冲降仓(最多 max_pos_reduce)
+        pos = np.where(cr > 0.5, crisis_pos, 1.0 - st * max_pos_reduce)
+        r_def = def_ann / 252.0
+        gated = pos * daily.values + (1.0 - pos) * r_def     # 空仓吃防御资产收益
+        daily = pd.Series(gated, index=daily.index)
     nav = (1.0 + daily).cumprod()
     bnav = (1.0 + base).cumprod()
     n = len(daily)
@@ -295,7 +318,8 @@ def backtest(oos_detail, top_frac=0.3):
     max_dd_b = float((bnav / bnav.cummax() - 1.0).min())
     calmar = (ann / abs(max_dd)) if max_dd < 0 else np.nan
     return {
-        "n_days": n, "years": round(n / 252.0, 2),
+        "n_days": n, "n_crisis_days": n_crisis_days,
+        "years": round(n / 252.0, 2),
         "start": str(daily.index.min().date()), "end": str(daily.index.max().date()),
         "ann_ret": round(float(ann), 4), "ann_base": round(float(ann_b), 4),
         "tot_ret": round(float(nav.iloc[-1] / nav.iloc[0] - 1), 4),
