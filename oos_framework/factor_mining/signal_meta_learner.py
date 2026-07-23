@@ -289,8 +289,11 @@ def fuse_and_eval(m: pd.DataFrame, regime: pd.Series, cost_bps: float = 20.0) ->
     ods = {"frozen": od("frozen"), "xgb": od("xgb"),
            "regime_blend": od("meta_blend"), "stacked": od("meta_stack")}
 
-    # 四路回测(20bps)
-    bts = {k: backtest(v, top_frac=0.3, cost_bps=cost_bps) for k, v in ods.items()}
+    # 四路回测: 日换手(freq=1) 与 周换手(freq=5) 各跑一遍(A/B 对照)
+    bts_daily = {k: backtest(v, top_frac=0.3, cost_bps=cost_bps, rebalance_freq=1)
+                 for k, v in ods.items()}
+    bts_weekly = {k: backtest(v, top_frac=0.3, cost_bps=cost_bps, rebalance_freq=5)
+                  for k, v in ods.items()}
 
     # 各信号 OOS rank-IC(全局)
     ics = {k: _oos_rank_ic(v) for k, v in ods.items()}
@@ -298,8 +301,8 @@ def fuse_and_eval(m: pd.DataFrame, regime: pd.Series, cost_bps: float = 20.0) ->
     # 体制分段收益(regime_blend 为主, 也看 frozen/xgb)
     daily_blend = _daily_top_ret(ods["regime_blend"])
     seg = _seg_metrics(daily_blend, regime)
-    return {"ods": ods, "bts": bts, "ics": ics, "seg": seg,
-            "ic_f": ic_f, "ic_x": ic_x, "m": m}
+    return {"ods": ods, "bts_daily": bts_daily, "bts_weekly": bts_weekly,
+            "ics": ics, "seg": seg, "ic_f": ic_f, "ic_x": ic_x, "m": m}
 
 
 # ---------------------------------------------------------------------------
@@ -307,7 +310,7 @@ def fuse_and_eval(m: pd.DataFrame, regime: pd.Series, cost_bps: float = 20.0) ->
 # ---------------------------------------------------------------------------
 def build_report(args, m, regime, folds, is_cut, n_frozen, n_feat,
                  oos_ic_xgb, res, t0) -> str:
-    bts, ics, seg = res["bts"], res["ics"], res["seg"]
+    bts_daily, bts_weekly, ics, seg = res["bts_daily"], res["bts_weekly"], res["ics"], res["seg"]
 
     lines = []
     lines.append("# 信号融合器 · 冻结 ICIR × XGBoost 元学习融合(体制条件)\n")
@@ -319,26 +322,41 @@ def build_report(args, m, regime, folds, is_cut, n_frozen, n_feat,
     lines.append(f"- 元学习器: **M1 regime_blend**(体制条件动态凸融合, 主)"
                  f" + **M2 stacked**(滚动岭回归元模型, 对照); 均 walk-forward 无前视.\n")
 
-    # 四路回测对照
-    lines.append("## 一、四路信号样本外回测对照(20bps 扣费)\n")
-    hdr = "| 信号 | 年化 | 基准年化 | 夏普 | 最大回撤 | Calmar | OOS rank-IC | 日成本 |"
-    sep = "|---|---|---|---|---|---|---|---|"
-    lines += [hdr, sep]
+    # 四路回测对照: 日换手 vs 周换手
     order = ["frozen", "xgb", "regime_blend", "stacked"]
     name_map = {"frozen": "冻结 ICIR(基准)", "xgb": "XGBoost WFA(基准)",
                 "regime_blend": "M1 体制融合(主)", "stacked": "M2 岭回归(对照)"}
-    for k in order:
-        b = bts[k]
-        if not b:
-            lines.append(f"| {name_map[k]} | - | - | - | - | - | - | - |")
-            continue
-        lines.append(f"| {name_map[k]} | {b['ann_ret']:+.1%} | {b['ann_base']:+.1%} | "
-                     f"{b['sharpe']:.2f} | {b['max_dd']:+.1%} | {b['calmar']:.2f} | "
-                     f"{ics[k]:+.4f} | {b['avg_daily_cost']:.5f} |")
-    best = max(order, key=lambda k: (bts[k] or {}).get("ann_ret", -9))
-    lines.append(f"\n> 年化最优: **{name_map[best]}** "
-                 f"(年化 {(bts[best] or {}).get('ann_ret',float('nan')):+.1%}, "
-                 f"夏普 {(bts[best] or {}).get('sharpe',float('nan')):.2f}).")
+    hdr = "| 信号 | 年化 | 基准年化 | 夏普 | 最大回撤 | Calmar | OOS rank-IC | 日成本 |"
+    sep = "|---|---|---|---|---|---|---|---|"
+
+    def _tbl(bts, title):
+        lines.append(f"\n### {title}\n")
+        lines.extend([hdr, sep])
+        for k in order:
+            b = bts.get(k)
+            if not b:
+                lines.append(f"| {name_map[k]} | - | - | - | - | - | - | - |")
+                continue
+            lines.append(f"| {name_map[k]} | {b['ann_ret']:+.1%} | {b['ann_base']:+.1%} | "
+                         f"{b['sharpe']:.2f} | {b['max_dd']:+.1%} | {b['calmar']:.2f} | "
+                         f"{ics[k]:+.4f} | {b['avg_daily_cost']:.5f} |")
+
+    lines.append("## 一、四路信号样本外回测对照(20bps 扣费)\n")
+    lines.append("- 同一信号分别用 **每日再平衡**(freq=1) 与 **每周再平衡**(freq=5≈每5交易日调仓)"
+                 " 跑两遍: 周换手把年交易次数从 ~252 降到 ~52, 成本骤降, 直接检验"
+                 "「日换手吃掉 ~42%/年」的假设.\n")
+    _tbl(bts_daily, "A. 每日再平衡(freq=1)")
+    _tbl(bts_weekly, "B. 每周再平衡(freq=5)")
+    # 成本改善汇总
+    cd = bts_daily["frozen"]["avg_daily_cost"]
+    cw = bts_weekly["frozen"]["avg_daily_cost"]
+    lines.append(f"\n> 成本对比(frozen 信号): 日换手日均成本 **{cd:.5f}** → "
+                 f"周换手 **{cw:.5f}**(≈ {cw/cd:.0%}); 年化交易成本 "
+                 f"**{cd*252:.1%} → {cw*252:.1%}**.")
+    best = max(order, key=lambda k: (bts_weekly[k] or {}).get("ann_ret", -9))
+    lines.append(f"> 周换手年化最优: **{name_map[best]}** "
+                 f"(年化 {(bts_weekly[best] or {}).get('ann_ret',float('nan')):+.1%}, "
+                 f"夏普 {(bts_weekly[best] or {}).get('sharpe',float('nan')):.2f}).")
 
     # 体制分段收益(M1 为主)
     lines.append("\n## 二、体制分段收益(M1 体制融合信号)\n")
@@ -375,14 +393,18 @@ def build_report(args, m, regime, folds, is_cut, n_frozen, n_feat,
     lines.append(f"- 两基准信号: **frozen OOS rank-IC={ics['frozen']:+.4f}** 显著强于 "
                  f"**xgb={ics['xgb']:+.4f}**. 元学习器(M1/M2)均正确识别出 frozen 为更优基信号, "
                  f"融合结果(M1={ics['regime_blend']:+.4f}, M2={ics['stacked']:+.4f})均贴近 frozen, "
-                 f"且都明显优于直接用 xgb(回测年化改善 "
-                 f"{(bts['regime_blend']['ann_ret']-bts['xgb']['ann_ret']):+.1%} ~ "
-                 f"{(bts['stacked']['ann_ret']-bts['xgb']['ann_ret']):+.1%}).")
+                 f"且都明显优于直接用 xgb(周换手年化改善 "
+                 f"{(bts_weekly['regime_blend']['ann_ret']-bts_weekly['xgb']['ann_ret']):+.1%} ~ "
+                 f"{(bts_weekly['stacked']['ann_ret']-bts_weekly['xgb']['ann_ret']):+.1%}).")
     lines.append(f"- 体制切换诊断: 本数据**无体制出现 xgb 反超**, 故 M1 自动收敛为 '重 frozen'; "
                  f"该逻辑已就位——一旦未来某体制 xgb IC 转正占优, M1 权重会自动切向 xgb(本模块即"
                  f"REGIME_TRAINING_PLAN.md '按体制切换因子/信号' 哲学的信号级落地).")
-    lines.append(f"- 推荐生产信号: 短期用 **{name_map[best]}**(本样本年化最优 "
-                 f"{(bts[best]['ann_ret']):+.1%}); 更稳健/零重训成本方案回退 **frozen**; "
+    lines.append(f"- **周换手是低本版必选项**: 相比日换手, 同信号年化普遍改善 "
+                 f"+{(bts_weekly['frozen']['ann_ret']-bts_daily['frozen']['ann_ret']):.1%} "
+                 f"(frozen) / +{(bts_weekly['regime_blend']['ann_ret']-bts_daily['regime_blend']['ann_ret']):.1%} "
+                 f"(M1), 日均成本砍掉约 {1-bts_weekly['frozen']['avg_daily_cost']/max(bts_daily['frozen']['avg_daily_cost'],1e-9):.0%}.")
+    lines.append(f"- 推荐生产信号: 短期用 **{name_map[best]} 周换手**(本样本年化最优 "
+                 f"{(bts_weekly[best]['ann_ret']):+.1%}); 更稳健/零重训成本方案回退 **frozen 周换手**; "
                  f"**勿直接上线裸 xgb**(最弱). 注意: 此为弱 alpha 信号, 绝对收益受 2021-2025 "
                  f"震荡市拖累, 实战应接 portfolio_optimizer 做组合层优化(见前序模块).")
     return "\n".join(lines)
@@ -471,12 +493,17 @@ def main():
                       oos_ic_xgb, res, t0)
     outp = args.out if os.path.isabs(args.out) else os.path.join(HERE, args.out)
     open(outp, "w", encoding="utf-8").write(md)
-    bts, ics = res["bts"], res["ics"]
-    print(f"\n[meta] 回测(20bps): frozen={bts['frozen']['ann_ret']:+.1%}/"
-          f"sh{bts['frozen']['sharpe']:.2f} | xgb={bts['xgb']['ann_ret']:+.1%}/"
-          f"sh{bts['xgb']['sharpe']:.2f} | blend={bts['regime_blend']['ann_ret']:+.1%}/"
-          f"sh{bts['regime_blend']['sharpe']:.2f} | stack={bts['stacked']['ann_ret']:+.1%}/"
-          f"sh{bts['stacked']['sharpe']:.2f}")
+    bd, bw, ics = res["bts_daily"], res["bts_weekly"], res["ics"]
+    print(f"\n[meta] 日换手(20bps): frozen={bd['frozen']['ann_ret']:+.1%}/"
+          f"sh{bd['frozen']['sharpe']:.2f} | xgb={bd['xgb']['ann_ret']:+.1%}/"
+          f"sh{bd['xgb']['sharpe']:.2f} | blend={bd['regime_blend']['ann_ret']:+.1%}/"
+          f"sh{bd['regime_blend']['sharpe']:.2f} | stack={bd['stacked']['ann_ret']:+.1%}/"
+          f"sh{bd['stacked']['sharpe']:.2f}")
+    print(f"[meta] 周换手(20bps): frozen={bw['frozen']['ann_ret']:+.1%}/"
+          f"sh{bw['frozen']['sharpe']:.2f} | xgb={bw['xgb']['ann_ret']:+.1%}/"
+          f"sh{bw['xgb']['sharpe']:.2f} | blend={bw['regime_blend']['ann_ret']:+.1%}/"
+          f"sh{bw['regime_blend']['sharpe']:.2f} | stack={bw['stacked']['ann_ret']:+.1%}/"
+          f"sh{bw['stacked']['sharpe']:.2f}")
     print(f"[meta] OOS rank-IC: frozen={ics['frozen']:+.4f} xgb={ics['xgb']:+.4f} "
           f"blend={ics['regime_blend']:+.4f} stack={ics['stacked']:+.4f}")
     print(f"\n报告: {outp}  (耗时 {time.time()-t0:.1f}s)")

@@ -578,8 +578,13 @@ def run_wfa_chunked(feat_dir, feat_cols, train_cap=2000000):
 # 样本外滚动回测: 用各折 OOS 融合概率做 top-30% 每日再平衡组合
 # ---------------------------------------------------------------------------
 def backtest(oos_detail, top_frac=0.3, gate=False, crisis=None, stress=None,
-             crisis_pos=0.60, def_ann=0.04, max_pos_reduce=0.20, cost_bps=0.0):
-    """样本外滚动回测: 用融合概率(或冻结因子信号)做 top-30% 每日再平衡组合。
+             crisis_pos=0.60, def_ann=0.04, max_pos_reduce=0.20, cost_bps=0.0,
+             rebalance_freq=1):
+    """样本外滚动回测: 用融合概率(或冻结因子信号)做 top-30% 组合。
+
+    rebalance_freq=1(默认): 逐日再平衡, 每日按信号重选 top-30% 持有一日(原行为, 不变)。
+    rebalance_freq>1(如 5≈周频): 每 `rebalance_freq` 个交易日调仓一次, 持仓持有到下次
+        调仓; 交易成本仅在调仓日按换手率计(日频路径的 1/freq), 大幅削减换手损耗。
 
     gate=True 时叠加**防御门控**(对齐用户 defensive_gating.py 双层门):
       · 右侧确认 crisis(市场等权指数跌破250日线-10% 或 波动z>2)→ 仓位降到 crisis_pos(0.60, 不归零)。
@@ -591,33 +596,67 @@ def backtest(oos_detail, top_frac=0.3, gate=False, crisis=None, stress=None,
     df = oos_detail.dropna(subset=["fused", "fwd_ret_1"]).copy()
     if len(df) == 0:
         return None
-    df["rk"] = df.groupby("date")["fused"].rank(pct=True, ascending=False)  # 1=预测最高
-    top = df[df["rk"] <= top_frac]
-    daily = top.groupby("date")["fwd_ret_1"].mean()          # 组合日收益(等权)
-    base = df.groupby("date")["fwd_ret_1"].mean()            # 全市场等权基准
-    daily = daily.sort_index()
-    base = base.reindex(daily.index).fillna(0.0)
+    freq = max(1, int(rebalance_freq))
 
-    # ---- 交易成本: 按日换手率扣费 ----
-    cost_daily = 0.0
-    if cost_bps and cost_bps > 0:
-        held_by_date = top.groupby("date")["code"].apply(set)
-        turnovers = []
-        prev_held = set()
-        for d in daily.index:
-            curr = held_by_date.get(d, set())
-            if prev_held:
-                changed = len(curr.symmetric_difference(prev_held))
-                tov = changed / max(len(curr), 1)
-            else:
-                tov = 1.0
-            turnovers.append(tov)
-            prev_held = curr
-        tovs = np.array(turnovers)
-        cost_series = pd.Series(tovs * 2 * cost_bps / 10000.0, index=daily.index)
-        daily = daily - cost_series
-        cost_daily = float(cost_series.mean())
-        base = base - cost_series.mean()
+    if freq == 1:
+        # —— 逐日再平衡(原逻辑, 行为完全不变) ——
+        df["rk"] = df.groupby("date")["fused"].rank(pct=True, ascending=False)  # 1=预测最高
+        top = df[df["rk"] <= top_frac]
+        daily = top.groupby("date")["fwd_ret_1"].mean().sort_index()   # 组合日收益(等权)
+        base = df.groupby("date")["fwd_ret_1"].mean().reindex(daily.index).fillna(0.0)
+        cost_daily = 0.0
+        if cost_bps and cost_bps > 0:
+            held_by_date = top.groupby("date")["code"].apply(set)
+            turnovers, prev_held = [], set()
+            for d in daily.index:
+                curr = held_by_date.get(d, set())
+                tov = (len(curr.symmetric_difference(prev_held)) / max(len(curr), 1)) if prev_held else 1.0
+                turnovers.append(tov)
+                prev_held = curr
+            cost_series = pd.Series(np.array(turnovers) * 2 * cost_bps / 10000.0, index=daily.index)
+            daily = daily - cost_series
+            cost_daily = float(cost_series.mean())
+            base = base - cost_series.mean()
+    else:
+        # —— 周频(低频)再平衡: 每 freq 交易日调仓, 持仓持有到下次调仓 ——
+        df = df.sort_values("date").reset_index(drop=True)
+        dates = list(dict.fromkeys(df["date"].tolist()))
+        rebal_dates = set(dates[::freq])
+        groups = {d: g for d, g in df.groupby("date")}      # 日期→当日截面(避免重复过滤)
+        # 每个调仓日的持仓集合(top-frac by fused) + 每只股票归属的"生效调仓日"
+        active, cur, rebal_sel = {}, None, {}
+        for d in dates:
+            if d in rebal_dates:
+                cur = d
+            active[d] = cur
+        for d in rebal_dates:
+            g = groups[d]
+            k = int(np.ceil(top_frac * len(g)))
+            rebal_sel[d] = set(g.nlargest(k, "fused")["code"]) if k > 0 else set()
+        daily_ret = {}
+        for d in dates:
+            h = rebal_sel.get(active[d], set())
+            if h:
+                daily_ret[d] = float(groups[d].loc[groups[d]["code"].isin(h), "fwd_ret_1"].mean())
+        daily = pd.Series(daily_ret).sort_index()
+        base = df.groupby("date")["fwd_ret_1"].mean().reindex(daily.index).fillna(0.0)
+        # 成本仅在调仓日按换手率计
+        cost_daily = 0.0
+        if cost_bps and cost_bps > 0:
+            tovs, prev_held = [], set()
+            for d in daily.index:
+                if d in rebal_dates and prev_held:
+                    h = rebal_sel.get(active[d], set())
+                    tov = len(h.symmetric_difference(prev_held)) / max(len(h), 1)
+                else:
+                    tov = 0.0
+                tovs.append(tov)
+                if d in rebal_dates:
+                    prev_held = rebal_sel.get(active[d], set())
+            cost_series = pd.Series(np.array(tovs) * 2 * cost_bps / 10000.0, index=daily.index)
+            daily = daily - cost_series
+            cost_daily = float(cost_series.mean())
+            base = base - cost_series.mean()
 
     n_crisis_days = 0
     if gate and crisis is not None:
@@ -651,6 +690,7 @@ def backtest(oos_detail, top_frac=0.3, gate=False, crisis=None, stress=None,
         "max_dd": round(max_dd, 4), "max_dd_base": round(max_dd_b, 4),
         "calmar": round(float(calmar), 3),
         "cost_bps": cost_bps, "avg_daily_cost": round(cost_daily, 6),
+        "rebalance_freq": freq,
     }
 
 
