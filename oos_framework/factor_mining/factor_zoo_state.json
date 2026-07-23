@@ -1,0 +1,1541 @@
+{
+  "version": "1.0",
+  "factors": {
+    "cs_rank(ts_std(dist_low_20,5) sub amount)": {
+      "expr_tuple": [
+        "cs",
+        "cs_rank",
+        [
+          "bin",
+          "bin_sub",
+          [
+            "ts",
+            "ts_std",
+            [
+              "var",
+              "dist_low_20"
+            ],
+            5
+          ],
+          [
+            "var",
+            "amount"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0494,
+      "icir": 4.095,
+      "frozen": true,
+      "frozen_weight": 0.0455,
+      "recent_ic": 0.0532,
+      "base_ic": 0.0897,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(vol_20 sub amount)": {
+      "expr_tuple": [
+        "cs",
+        "cs_rank",
+        [
+          "bin",
+          "bin_sub",
+          [
+            "var",
+            "vol_20"
+          ],
+          [
+            "var",
+            "amount"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0492,
+      "icir": 4.077,
+      "frozen": true,
+      "frozen_weight": 0.0456,
+      "recent_ic": 0.0532,
+      "base_ic": 0.0898,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(chip_conc90 sub amount mul chip_conc70)": {
+      "expr_tuple": [
+        "cs",
+        "cs_rank",
+        [
+          "bin",
+          "bin_mul",
+          [
+            "bin",
+            "bin_sub",
+            [
+              "var",
+              "chip_conc90"
+            ],
+            [
+              "var",
+              "amount"
+            ]
+          ],
+          [
+            "var",
+            "chip_conc70"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": null,
+      "icir": 0.0,
+      "frozen": false,
+      "frozen_weight": 0.0,
+      "recent_ic": null,
+      "base_ic": null,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(chip_disp) mul 1.0 sub cs_rank(ret_20)": {
+      "expr_tuple": [
+        "bin",
+        "bin_mul",
+        [
+          "cs",
+          "cs_rank",
+          [
+            "var",
+            "chip_disp"
+          ]
+        ],
+        [
+          "bin",
+          "bin_sub",
+          [
+            "const",
+            1.0
+          ],
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "ret_20"
+            ]
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": null,
+      "icir": 0.0,
+      "frozen": false,
+      "frozen_weight": 0.0,
+      "recent_ic": null,
+      "base_ic": null,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(vol_20 div amount)": {
+      "expr_tuple": [
+        "cs",
+        "cs_rank",
+        [
+          "bin",
+          "bin_div",
+          [
+            "var",
+            "vol_20"
+          ],
+          [
+            "var",
+            "amount"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0407,
+      "icir": 3.405,
+      "frozen": true,
+      "frozen_weight": 0.0376,
+      "recent_ic": -0.0068,
+      "base_ic": 0.0575,
+      "decay_flag": true,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "0.0 sub cs_rank(chip_cost_dev) mul cs_rank(vol_20)": {
+      "expr_tuple": [
+        "bin",
+        "bin_sub",
+        [
+          "const",
+          0.0
+        ],
+        [
+          "bin",
+          "bin_mul",
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "chip_cost_dev"
+            ]
+          ],
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "vol_20"
+            ]
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": null,
+      "icir": 0.0,
+      "frozen": false,
+      "frozen_weight": 0.0,
+      "recent_ic": null,
+      "base_ic": null,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(chip_disp) mul 1.0 sub cs_rank(dist_low_20)": {
+      "expr_tuple": [
+        "bin",
+        "bin_mul",
+        [
+          "cs",
+          "cs_rank",
+          [
+            "var",
+            "chip_disp"
+          ]
+        ],
+        [
+          "bin",
+          "bin_sub",
+          [
+            "const",
+            1.0
+          ],
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "dist_low_20"
+            ]
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": null,
+      "icir": 0.0,
+      "frozen": false,
+      "frozen_weight": 0.0,
+      "recent_ic": null,
+      "base_ic": null,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "0.0 sub cs_rank(ret_20) mul cs_rank(vol_20)": {
+      "expr_tuple": [
+        "bin",
+        "bin_sub",
+        [
+          "const",
+          0.0
+        ],
+        [
+          "bin",
+          "bin_mul",
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "ret_20"
+            ]
+          ],
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "vol_20"
+            ]
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0494,
+      "icir": 4.413,
+      "frozen": true,
+      "frozen_weight": 0.0561,
+      "recent_ic": 0.1138,
+      "base_ic": 0.0782,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "ts_min(ret_1 sub amount div ret_5 div log_ret_1,10)": {
+      "expr_tuple": [
+        "ts",
+        "ts_min",
+        [
+          "bin",
+          "bin_div",
+          [
+            "bin",
+            "bin_sub",
+            [
+              "var",
+              "ret_1"
+            ],
+            [
+              "var",
+              "amount"
+            ]
+          ],
+          [
+            "bin",
+            "bin_div",
+            [
+              "var",
+              "ret_5"
+            ],
+            [
+              "var",
+              "log_ret_1"
+            ]
+          ]
+        ],
+        10
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0323,
+      "icir": 2.912,
+      "frozen": true,
+      "frozen_weight": 0.0227,
+      "recent_ic": 0.0471,
+      "base_ic": 0.0687,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "0.0 sub amp_1 corr dist_low_20": {
+      "expr_tuple": [
+        "bin",
+        "bin_sub",
+        [
+          "const",
+          0.0
+        ],
+        [
+          "bin",
+          "bin_corr",
+          [
+            "var",
+            "amp_1"
+          ],
+          [
+            "var",
+            "dist_low_20"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0432,
+      "icir": 4.936,
+      "frozen": true,
+      "frozen_weight": 0.0588,
+      "recent_ic": 0.1027,
+      "base_ic": 0.1097,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "0.0 sub cs_rank(chip_conc90) mul cs_rank(chip_cost_dev)": {
+      "expr_tuple": [
+        "bin",
+        "bin_sub",
+        [
+          "const",
+          0.0
+        ],
+        [
+          "bin",
+          "bin_mul",
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "chip_conc90"
+            ]
+          ],
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "chip_cost_dev"
+            ]
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": null,
+      "icir": 0.0,
+      "frozen": false,
+      "frozen_weight": 0.0,
+      "recent_ic": null,
+      "base_ic": null,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "0.0 sub cs_rank(amp_1) mul cs_rank(vol_20)": {
+      "expr_tuple": [
+        "bin",
+        "bin_sub",
+        [
+          "const",
+          0.0
+        ],
+        [
+          "bin",
+          "bin_mul",
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "amp_1"
+            ]
+          ],
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "vol_20"
+            ]
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0643,
+      "icir": 4.971,
+      "frozen": true,
+      "frozen_weight": 0.0685,
+      "recent_ic": 0.1091,
+      "base_ic": 0.0961,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "0.0 sub cs_rank(amp_1) mul cs_rank(dist_low_20)": {
+      "expr_tuple": [
+        "bin",
+        "bin_sub",
+        [
+          "const",
+          0.0
+        ],
+        [
+          "bin",
+          "bin_mul",
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "amp_1"
+            ]
+          ],
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "dist_low_20"
+            ]
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0597,
+      "icir": 5.11,
+      "frozen": true,
+      "frozen_weight": 0.0707,
+      "recent_ic": 0.0975,
+      "base_ic": 0.0853,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(chip_disp) mul 1.0 sub cs_rank(vol_20)": {
+      "expr_tuple": [
+        "bin",
+        "bin_mul",
+        [
+          "cs",
+          "cs_rank",
+          [
+            "var",
+            "chip_disp"
+          ]
+        ],
+        [
+          "bin",
+          "bin_sub",
+          [
+            "const",
+            1.0
+          ],
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "vol_20"
+            ]
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": null,
+      "icir": 0.0,
+      "frozen": false,
+      "frozen_weight": 0.0,
+      "recent_ic": null,
+      "base_ic": null,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "0.0 sub cs_rank(dist_low_20) mul cs_rank(vol_20)": {
+      "expr_tuple": [
+        "bin",
+        "bin_sub",
+        [
+          "const",
+          0.0
+        ],
+        [
+          "bin",
+          "bin_mul",
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "dist_low_20"
+            ]
+          ],
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "vol_20"
+            ]
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0552,
+      "icir": 4.642,
+      "frozen": true,
+      "frozen_weight": 0.0636,
+      "recent_ic": 0.1261,
+      "base_ic": 0.0851,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(vol_20 sub ret_20)": {
+      "expr_tuple": [
+        "cs",
+        "cs_rank",
+        [
+          "bin",
+          "bin_sub",
+          [
+            "var",
+            "vol_20"
+          ],
+          [
+            "var",
+            "ret_20"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0313,
+      "icir": 2.491,
+      "frozen": true,
+      "frozen_weight": 0.0392,
+      "recent_ic": 0.0559,
+      "base_ic": 0.0565,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(chip_disp) sub cs_rank(ret_20)": {
+      "expr_tuple": [
+        "bin",
+        "bin_sub",
+        [
+          "cs",
+          "cs_rank",
+          [
+            "var",
+            "chip_disp"
+          ]
+        ],
+        [
+          "cs",
+          "cs_rank",
+          [
+            "var",
+            "ret_20"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": null,
+      "icir": 0.0,
+      "frozen": false,
+      "frozen_weight": 0.0,
+      "recent_ic": null,
+      "base_ic": null,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "0.0 sub chip_cost_dev div vol_20": {
+      "expr_tuple": [
+        "bin",
+        "bin_sub",
+        [
+          "const",
+          0.0
+        ],
+        [
+          "bin",
+          "bin_div",
+          [
+            "var",
+            "chip_cost_dev"
+          ],
+          [
+            "var",
+            "vol_20"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": null,
+      "icir": 0.0,
+      "frozen": false,
+      "frozen_weight": 0.0,
+      "recent_ic": null,
+      "base_ic": null,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "chip_disp div vol_20": {
+      "expr_tuple": [
+        "bin",
+        "bin_div",
+        [
+          "var",
+          "chip_disp"
+        ],
+        [
+          "var",
+          "vol_20"
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": null,
+      "icir": 0.0,
+      "frozen": false,
+      "frozen_weight": 0.0,
+      "recent_ic": null,
+      "base_ic": null,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "0.0 sub ret_20 div vol_20": {
+      "expr_tuple": [
+        "bin",
+        "bin_sub",
+        [
+          "const",
+          0.0
+        ],
+        [
+          "bin",
+          "bin_div",
+          [
+            "var",
+            "ret_20"
+          ],
+          [
+            "var",
+            "vol_20"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0318,
+      "icir": 2.683,
+      "frozen": true,
+      "frozen_weight": 0.0409,
+      "recent_ic": 0.0259,
+      "base_ic": 0.0473,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "0.0 sub amp_1 div dist_low_20": {
+      "expr_tuple": [
+        "bin",
+        "bin_sub",
+        [
+          "const",
+          0.0
+        ],
+        [
+          "bin",
+          "bin_div",
+          [
+            "var",
+            "amp_1"
+          ],
+          [
+            "var",
+            "dist_low_20"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0628,
+      "icir": 5.483,
+      "frozen": true,
+      "frozen_weight": 0.0783,
+      "recent_ic": 0.0823,
+      "base_ic": 0.0924,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(chip_disp) sub cs_rank(dist_low_20)": {
+      "expr_tuple": [
+        "bin",
+        "bin_sub",
+        [
+          "cs",
+          "cs_rank",
+          [
+            "var",
+            "chip_disp"
+          ]
+        ],
+        [
+          "cs",
+          "cs_rank",
+          [
+            "var",
+            "dist_low_20"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": null,
+      "icir": 0.0,
+      "frozen": false,
+      "frozen_weight": 0.0,
+      "recent_ic": null,
+      "base_ic": null,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "0.0 sub cs_rank(vol_20) mul cs_rank(vrate_20)": {
+      "expr_tuple": [
+        "bin",
+        "bin_sub",
+        [
+          "const",
+          0.0
+        ],
+        [
+          "bin",
+          "bin_mul",
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "vol_20"
+            ]
+          ],
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "vrate_20"
+            ]
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0595,
+      "icir": 5.586,
+      "frozen": true,
+      "frozen_weight": 0.0782,
+      "recent_ic": 0.0696,
+      "base_ic": 0.0684,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "0.0 sub chip_conc90 div chip_disp": {
+      "expr_tuple": [
+        "bin",
+        "bin_sub",
+        [
+          "const",
+          0.0
+        ],
+        [
+          "bin",
+          "bin_div",
+          [
+            "var",
+            "chip_conc90"
+          ],
+          [
+            "var",
+            "chip_disp"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": null,
+      "icir": 0.0,
+      "frozen": false,
+      "frozen_weight": 0.0,
+      "recent_ic": null,
+      "base_ic": null,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(vol_20 sub dist_low_20)": {
+      "expr_tuple": [
+        "cs",
+        "cs_rank",
+        [
+          "bin",
+          "bin_sub",
+          [
+            "var",
+            "vol_20"
+          ],
+          [
+            "var",
+            "dist_low_20"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0397,
+      "icir": 3.27,
+      "frozen": true,
+      "frozen_weight": 0.0488,
+      "recent_ic": 0.0688,
+      "base_ic": 0.0586,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(vol_20 sub volume)": {
+      "expr_tuple": [
+        "cs",
+        "cs_rank",
+        [
+          "bin",
+          "bin_sub",
+          [
+            "var",
+            "vol_20"
+          ],
+          [
+            "var",
+            "volume"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0437,
+      "icir": 4.141,
+      "frozen": true,
+      "frozen_weight": 0.0395,
+      "recent_ic": 0.0919,
+      "base_ic": 0.088,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "dist_low_20 div vol_20": {
+      "expr_tuple": [
+        "bin",
+        "bin_div",
+        [
+          "var",
+          "dist_low_20"
+        ],
+        [
+          "var",
+          "vol_20"
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0523,
+      "icir": 4.034,
+      "frozen": true,
+      "frozen_weight": 0.0506,
+      "recent_ic": 0.1232,
+      "base_ic": 0.086,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(chip_disp) sub cs_rank(vol_20)": {
+      "expr_tuple": [
+        "bin",
+        "bin_sub",
+        [
+          "cs",
+          "cs_rank",
+          [
+            "var",
+            "chip_disp"
+          ]
+        ],
+        [
+          "cs",
+          "cs_rank",
+          [
+            "var",
+            "vol_20"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": null,
+      "icir": 0.0,
+      "frozen": false,
+      "frozen_weight": 0.0,
+      "recent_ic": null,
+      "base_ic": null,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "0.0 sub cs_rank(chip_conc90) mul cs_rank(vol_20)": {
+      "expr_tuple": [
+        "bin",
+        "bin_sub",
+        [
+          "const",
+          0.0
+        ],
+        [
+          "bin",
+          "bin_mul",
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "chip_conc90"
+            ]
+          ],
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "vol_20"
+            ]
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": null,
+      "icir": 0.0,
+      "frozen": false,
+      "frozen_weight": 0.0,
+      "recent_ic": null,
+      "base_ic": null,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "0.0 sub cs_rank(chip_conc90) sub cs_rank(chip_disp)": {
+      "expr_tuple": [
+        "bin",
+        "bin_sub",
+        [
+          "const",
+          0.0
+        ],
+        [
+          "bin",
+          "bin_sub",
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "chip_conc90"
+            ]
+          ],
+          [
+            "cs",
+            "cs_rank",
+            [
+              "var",
+              "chip_disp"
+            ]
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": null,
+      "icir": 0.0,
+      "frozen": false,
+      "frozen_weight": 0.0,
+      "recent_ic": null,
+      "base_ic": null,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(vol_20 sub chip_cost_dev)": {
+      "expr_tuple": [
+        "cs",
+        "cs_rank",
+        [
+          "bin",
+          "bin_sub",
+          [
+            "var",
+            "vol_20"
+          ],
+          [
+            "var",
+            "chip_cost_dev"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": null,
+      "icir": 0.0,
+      "frozen": false,
+      "frozen_weight": 0.0,
+      "recent_ic": null,
+      "base_ic": null,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(vol_20 sub chip_profit_ratio)": {
+      "expr_tuple": [
+        "cs",
+        "cs_rank",
+        [
+          "bin",
+          "bin_sub",
+          [
+            "var",
+            "vol_20"
+          ],
+          [
+            "var",
+            "chip_profit_ratio"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": null,
+      "icir": 0.0,
+      "frozen": false,
+      "frozen_weight": 0.0,
+      "recent_ic": null,
+      "base_ic": null,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(vol_20 sub ret_10)": {
+      "expr_tuple": [
+        "cs",
+        "cs_rank",
+        [
+          "bin",
+          "bin_sub",
+          [
+            "var",
+            "vol_20"
+          ],
+          [
+            "var",
+            "ret_10"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0255,
+      "icir": 2.029,
+      "frozen": true,
+      "frozen_weight": 0.0354,
+      "recent_ic": 0.0452,
+      "base_ic": 0.0402,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "ts_max(chip_conc70,10) sub high sub cs_rank(ts_rank(dist_high_20,60))": {
+      "expr_tuple": [
+        "bin",
+        "bin_sub",
+        [
+          "bin",
+          "bin_sub",
+          [
+            "ts",
+            "ts_max",
+            [
+              "var",
+              "chip_conc70"
+            ],
+            10
+          ],
+          [
+            "var",
+            "high"
+          ]
+        ],
+        [
+          "cs",
+          "cs_rank",
+          [
+            "ts",
+            "ts_rank",
+            [
+              "var",
+              "dist_high_20"
+            ],
+            60
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": null,
+      "icir": 0.0,
+      "frozen": false,
+      "frozen_weight": 0.0,
+      "recent_ic": null,
+      "base_ic": null,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(vol_20 sub range_20)": {
+      "expr_tuple": [
+        "cs",
+        "cs_rank",
+        [
+          "bin",
+          "bin_sub",
+          [
+            "var",
+            "vol_20"
+          ],
+          [
+            "var",
+            "range_20"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0422,
+      "icir": 3.326,
+      "frozen": true,
+      "frozen_weight": 0.0442,
+      "recent_ic": 0.0875,
+      "base_ic": 0.0621,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(vol_20 sub high)": {
+      "expr_tuple": [
+        "cs",
+        "cs_rank",
+        [
+          "bin",
+          "bin_sub",
+          [
+            "var",
+            "vol_20"
+          ],
+          [
+            "var",
+            "high"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0178,
+      "icir": 1.61,
+      "frozen": true,
+      "frozen_weight": 0.0268,
+      "recent_ic": -0.0886,
+      "base_ic": 0.002,
+      "decay_flag": true,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(ts_min(ret_20 sub chip_profit_ratio,20))": {
+      "expr_tuple": [
+        "cs",
+        "cs_rank",
+        [
+          "ts",
+          "ts_min",
+          [
+            "bin",
+            "bin_sub",
+            [
+              "var",
+              "ret_20"
+            ],
+            [
+              "var",
+              "chip_profit_ratio"
+            ]
+          ],
+          20
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": null,
+      "icir": 0.0,
+      "frozen": false,
+      "frozen_weight": 0.0,
+      "recent_ic": null,
+      "base_ic": null,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "ts_rank(ret_10,20) sub high sub chip_conc70": {
+      "expr_tuple": [
+        "bin",
+        "bin_sub",
+        [
+          "bin",
+          "bin_sub",
+          [
+            "ts",
+            "ts_rank",
+            [
+              "var",
+              "ret_10"
+            ],
+            20
+          ],
+          [
+            "var",
+            "high"
+          ]
+        ],
+        [
+          "var",
+          "chip_conc70"
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": null,
+      "icir": 0.0,
+      "frozen": false,
+      "frozen_weight": 0.0,
+      "recent_ic": null,
+      "base_ic": null,
+      "decay_flag": false,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(vol_20 sub open)": {
+      "expr_tuple": [
+        "cs",
+        "cs_rank",
+        [
+          "bin",
+          "bin_sub",
+          [
+            "var",
+            "vol_20"
+          ],
+          [
+            "var",
+            "open"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0162,
+      "icir": 1.466,
+      "frozen": true,
+      "frozen_weight": 0.0247,
+      "recent_ic": -0.0902,
+      "base_ic": 0.0002,
+      "decay_flag": true,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    },
+    "cs_rank(vol_20 sub low)": {
+      "expr_tuple": [
+        "cs",
+        "cs_rank",
+        [
+          "bin",
+          "bin_sub",
+          [
+            "var",
+            "vol_20"
+          ],
+          [
+            "var",
+            "low"
+          ]
+        ]
+      ],
+      "family": "未知",
+      "source": "mine_v2",
+      "direction": 1,
+      "registered": null,
+      "is_ic": 0.0157,
+      "icir": 1.424,
+      "frozen": true,
+      "frozen_weight": 0.0244,
+      "recent_ic": -0.0905,
+      "base_ic": -0.0009,
+      "decay_flag": true,
+      "n_freezes": 1,
+      "last_freeze": "2021-10-23",
+      "last_monitor": "2026-04-21"
+    }
+  },
+  "frozen_set": [
+    "cs_rank(ts_std(dist_low_20,5) sub amount)",
+    "cs_rank(vol_20 sub amount)",
+    "cs_rank(vol_20 div amount)",
+    "0.0 sub cs_rank(ret_20) mul cs_rank(vol_20)",
+    "ts_min(ret_1 sub amount div ret_5 div log_ret_1,10)",
+    "0.0 sub amp_1 corr dist_low_20",
+    "0.0 sub cs_rank(amp_1) mul cs_rank(vol_20)",
+    "0.0 sub cs_rank(amp_1) mul cs_rank(dist_low_20)",
+    "0.0 sub cs_rank(dist_low_20) mul cs_rank(vol_20)",
+    "cs_rank(vol_20 sub ret_20)",
+    "0.0 sub ret_20 div vol_20",
+    "0.0 sub amp_1 div dist_low_20",
+    "0.0 sub cs_rank(vol_20) mul cs_rank(vrate_20)",
+    "cs_rank(vol_20 sub dist_low_20)",
+    "cs_rank(vol_20 sub volume)",
+    "dist_low_20 div vol_20",
+    "cs_rank(vol_20 sub ret_10)",
+    "cs_rank(vol_20 sub range_20)",
+    "cs_rank(vol_20 sub high)",
+    "cs_rank(vol_20 sub open)",
+    "cs_rank(vol_20 sub low)"
+  ],
+  "freeze_date": "2021-10-23",
+  "refreeze_count": 0,
+  "last_monitor": "2026-04-21"
+}

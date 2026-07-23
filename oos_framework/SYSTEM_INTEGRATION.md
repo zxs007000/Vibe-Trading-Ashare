@@ -274,6 +274,8 @@
 | 双尾+倾斜 | 年化 / 回撤 / 夏普 | +16.4% / -26.5% / 0.81 |
 | 危机段内 | 裸 vs v4 回撤 | -29.5% → -18.6% |
 | SHAP | chip 平均排名 / Spearman | 14/46 / 0.57 |
+| 因子图书馆 | 冻结/衰减/再冻结 | 40因子 / 21冻结 / 4衰减 / 未触发再冻结 |
+| 信号融合 | frozen vs xgb OOS rank-IC | +0.083 vs +0.014（元融合收敛为信任 frozen） |
 | 股灾抗压 | 2008 回撤削减 | +17.2pp |
 
 ---
@@ -290,6 +292,11 @@ oos_framework/factor_mining/
 ├── mine_v2.py              # 四方向挖掘编排 → factors_v2_3dim.json
 ├── factor_screen.py        # P3 衰减感知筛选 → factors_v2_selected.json (40)
 ├── factor_wfa.py           # build_feature_table_chunked / run_wfa_chunked / backtest
+├── factor_zoo.py           # 因子图书馆: register→freeze→monitor→maybe_refreeze 生命周期管理
+├── factor_zoo_state.json   # 因子图书馆状态落盘(ICIR权重/衰减标志/冻结集/再冻结次数)
+├── FACTOR_ZOO_REPORT.md    # 因子图书馆生命周期报告(40因子/21冻结/4衰减)
+├── signal_meta_learner.py  # 信号融合器: frozen ICIR × XGBoost 元学习融合(体制条件)
+├── META_SIGNAL_RESULTS.md  # 信号融合器实证报告(四路对照 + 体制分段)
 ├── portfolio_optimizer.py  # 组合优化器: 信号→约束型多头组合(可落地的配置层)
 ├── demo_portfolio_optimizer.py  # 真实数据 A/B: naive 等权 vs 约束优化
 ├── run_wfa_v2.py           # P4 全池 WFA 编排
@@ -350,4 +357,74 @@ cmp   = compare_backtests(oos_detail, universe_frac=0.3, max_w=0.03, turnover_li
 
 ---
 
-*文档由系统整合任务生成（2026-07-23 初版，2026-07-24 增补组合优化器章节），覆盖数据湖→挖掘→训练→回测→门控→配置全链路，所有数字均来自 `RESULT_*.md` / `PORTFOLIO_OPT_RESULTS.md` 实证产出。*
+## 12. 因子图书馆模块（factor_zoo，新增 2026-07-24）
+
+把分散的「因子定义 / 冻结权重 / 衰减监控 / 再冻结」收敛到一个**有状态的图书馆**，实现完整生命周期：
+
+```
+register ──▶ freeze(IS 期算 ICIR 权重, 锁定因子集) ──▶ monitor(滚动 IC 衰减监控)
+                 ▲                                            │
+                 │                                            ▼ 衰减占比 > 阈值
+                 └────────────── refreeze(用近期 IS 重算权重)◀──┘
+```
+
+- 状态落盘 `factor_zoo_state.json`：每个因子的定义 + 生命周期元数据（IS_IC/ICIR/近期IC/历史IC/衰减标志/冻结权重/冻结次数），全局 `frozen_set` / `freeze_date` / `refreeze_count`。
+- `freeze` / `refreeze` 复用 `frozen_gate_wfa.frozen_icir_weights`（IC>0 & ICIR>0 → 权重=ICIR）。
+- `monitor` 复用向量化截面 rank-IC（与 `factor_decay_monitor` 同源口径）：近窗 IC < 历史 ×`DECAY_FRAC`(0.30) 或近窗转负 → 衰减；衰减因子占比 > `REFREEZE_THRESHOLD`(0.40) → 触发再冻结。
+- `weights_vector(feat_cols)` 直接产出对齐的冻结权重数组，与现有冻结策略管线零摩擦对接。
+
+接口：
+```python
+from factor_mining.factor_zoo import FactorZoo
+zoo = FactorZoo()
+zoo.register_many(items, families=families, source="mine_v2")
+zoo.freeze(long, feat_cols, is_cut)
+zoo.maybe_refreeze(long, feat_cols, is_cut)   # 衰减超阈值则自动重算权重
+w = zoo.weights_vector(feat_cols)             # 对齐的冻结权重
+```
+
+真实数据实证（400 只，`FACTOR_ZOO_REPORT.md`）：
+
+| 指标 | 值 |
+|---|---|
+| 因子总数 | 40 |
+| IS 冻结（IC>0 & ICIR>0） | 21 / 40 |
+| 衰减因子（近窗 IC 跌破基线） | 4（10%） |
+| 再冻结触发 | 否（衰减占比 10% ≤ 40%） |
+| 冻结点（IS 锁定） | 2021-10-23 |
+
+> `chip_*` 系列因子 IC=None（本环境筹码湖为空，NaN 因子自动按中性 0 处理，其 IS 权重本就≈0），不影响其余 21 个有效因子的冻结与监控。
+
+---
+
+## 13. 信号融合器模块（signal_meta_learner，新增 2026-07-24）
+
+把两条已有信号管线做**元学习融合**，回答「静态冻结 ICIR 因子合成（稳健/零重训） vs 动态 XGBoost WFA（自适应/每折重训）谁在哪种市场更准、能否动态融合」。
+
+两条基准信号（同一 OOS 宇宙，公平对照）：
+- **frozen**：`frozen_icir_weights` 在 IS 锁定因子集与 ICIR 权重，OOS 静态加权合成，**零重训**。
+- **xgb**：`run_wfa` 的 WFA 融合概率，每折重训 XGBoost。
+
+两个元学习融合器（均 walk-forward，无前视）：
+- **M1 regime_blend（主，体制条件动态凸融合）**：逐日按当前市场体制（bull/bear/osc，MA120+回撤口径，见 `REGIME_TRAINING_PLAN.md`）取该体制下两信号的滚动 rank-IC，权重 `clip(IC_f/(IC_f+IC_x), 0.15, 0.85)` → 凸融合。直接落地「按体制切换因子/信号」哲学（信号级版本）。
+- **M2 stacked（次，滚动岭回归元模型）**：以 `(frozen, xgb)` 为元特征，过去 ~252 交易日滚动岭回归拟合 `fwd_ret_1`，预测次日信号，作对照。
+
+四路回测（20bps 扣费，150 只，OOS 2021-10 ~ 2025-10）：
+
+| 信号 | 年化 | 夏普 | OOS rank-IC |
+|---|---|---|---|
+| 冻结 ICIR（基准） | −20.3% | −0.97 | **+0.0826** |
+| XGBoost WFA（基准） | −29.2% | −1.36 | +0.0140 |
+| M1 体制融合（主） | −20.5% | −0.94 | +0.0808 |
+| M2 岭回归（对照） | −15.3% | −0.63 | +0.0698 |
+
+结论：
+- 两基准信号 **frozen OOS rank-IC=+0.083 显著强于 xgb=+0.014**；元学习器均正确识别 frozen 为更优基信号，融合结果贴近 frozen、且都明显优于裸 xgb（年化改善 +4.8pp~+14.0pp）。
+- 体制切换诊断：本数据**无体制出现 xgb 反超**，故 M1 自动收敛为「重 frozen、轻 xgb」——该逻辑已就位，一旦未来某体制 xgb IC 占优会自动切权（即 `REGIME_TRAINING_PLAN.md` 哲学的信号级落地）。
+- 推荐生产信号短期用 M2（本样本年化最优 −15.3%）；更稳健/零重训成本方案回退 **frozen**；**勿直接上线裸 xgb**（最弱）。注意：此为弱 alpha 信号，绝对收益受 2021-2025 震荡市拖累，实战应接 §11 组合优化器做配置层优化。
+
+自测：`python signal_meta_learner.py --selftest`（合成数据冒烟，验证融合/岭回归逻辑、体制切换生效）。
+
+---
+
+*文档由系统整合任务生成（2026-07-23 初版，2026-07-24 增补组合优化器 / 因子图书馆 / 信号融合器章节），覆盖数据湖→挖掘→训练→回测→门控→配置→信号融合全链路，所有数字均来自 `RESULT_*.md` / `PORTFOLIO_OPT_RESULTS.md` / `FACTOR_ZOO_REPORT.md` / `META_SIGNAL_RESULTS.md` 实证产出。*
