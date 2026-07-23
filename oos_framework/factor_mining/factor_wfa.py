@@ -31,6 +31,7 @@ import os
 import sys
 import time
 import gc
+import glob
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -44,8 +45,9 @@ from sklearn.model_selection import RandomizedSearchCV
 from xgboost import XGBClassifier
 
 from factor_mining import (
-    list_stocks, load_base_data, derive_variables, forward_returns,
+    list_stocks, load_base_data, load_panel, derive_variables, forward_returns,
     evaluate_expr, expr_to_str, grid_search, evolve, MCTSAgent,
+    turnover_available,
 )
 
 RANDOM_STATE = 42
@@ -84,12 +86,26 @@ def wfa_folds(dates):
 # ---------------------------------------------------------------------------
 # 方向 collect: 四方向挖掘 + 去重统计
 # ---------------------------------------------------------------------------
-def collect_factors(n_mine: int = 300, seeds=(42, 7, 123)):
+def collect_factors(n_mine: int = 300, seeds=(42, 7, 123), use_universe: bool = True,
+                    with_xgb: bool = True, mine_horizons=(5, 10, 20)):
     t0 = time.time()
-    codes = list_stocks(n_mine)
+    codes = None
+    if use_universe:
+        try:
+            from factor_mining.universe import load_universe
+            uni = load_universe()
+            if uni:
+                rng = np.random.default_rng(42)
+                codes = sorted(rng.choice(uni, min(n_mine, len(uni)), replace=False).tolist())
+                print(f"[collect] 用过滤池采样 {len(codes)}/{len(uni)} 只 (剔ST/次新/低流动性)", flush=True)
+        except Exception:
+            pass
+    if codes is None:
+        codes = list_stocks(n_mine)
     data = derive_variables(load_base_data(codes))
-    fwd = forward_returns(data["close"])
-    print(f"[collect] 挖掘样本 {len(codes)} 只, 变量池 {len(data)} | 耗时 {time.time()-t0:.1f}s", flush=True)
+    fwd = forward_returns(data["close"], horizons=tuple(sorted(set(mine_horizons) | {20, 60})))
+    n_chip = sum(1 for k in data if k.startswith("chip_"))
+    print(f"[collect] 挖掘样本 {len(codes)} 只, 变量池 {len(data)} (含chip {n_chip}) | 耗时 {time.time()-t0:.1f}s", flush=True)
 
     seen = {}  # expr_str -> meta
 
@@ -128,6 +144,23 @@ def collect_factors(n_mine: int = 300, seeds=(42, 7, 123)):
             mcts_n += 1
     print(f"[collect] 方向3 MCTS: 新增 {mcts_n} 个 | {time.time()-t:.1f}s", flush=True)
 
+    # 方向4 XGBoost 交互挖掘: 浅层树发现条件依赖 → 翻译公式因子
+    if with_xgb:
+        t = time.time()
+        try:
+            from factor_mining.xgb_interaction import mine_interactions
+            xgb_res = mine_interactions(data, fwd, horizons=mine_horizons)
+            xgb_n = 0
+            for r in xgb_res:
+                if r["expr"] not in seen:
+                    seen[r["expr"]] = {"expr_tuple": r["expr_tuple"], "dir": 4,
+                                       "ic20": r["ic20"], "icir20": r["icir20"],
+                                       "turnover": r["turnover"]}
+                    xgb_n += 1
+            print(f"[collect] 方向4 XGB交互: 新增 {xgb_n} 个 | {time.time()-t:.1f}s", flush=True)
+        except Exception as e:
+            print(f"[collect] 方向4 失败(跳过): {e}", flush=True)
+
     return seen
 
 
@@ -154,6 +187,23 @@ def build_feature_table(codes, exprs, return_close=False):
             panels[s] = None
     print(f"[build] 因子面板计算完成 {len(panels)} 个 | {time.time()-t0:.1f}s", flush=True)
 
+    # ---- 筹码结构维度 (B1: 准确换手率驱动) ----
+    # 接进 XGBoost 的「筹码结构」选股维度: 获利盘比例/平均成本偏离/成本集中度/离散度/偏度。
+    # 特征名 chip_* 前缀; 对 qfq 调整乘子不变。turnover 湖缺失或计算失败则优雅跳过。
+    chip_feat_cols: list[str] = []
+    if turnover_available():
+        try:
+            from factor_mining.chip_structure import build_chip_panels, CHIP_FIELDS
+            t1 = time.time()
+            chip_panels = build_chip_panels(codes)
+            for k in CHIP_FIELDS:
+                if k in chip_panels:
+                    panels[k] = chip_panels[k].astype("float32")
+                    chip_feat_cols.append(k)
+            print(f"[build] 筹码结构特征载入 {len(chip_feat_cols)} 个 | {time.time()-t1:.1f}s", flush=True)
+        except Exception as e:
+            print(f"[build] 筹码结构特征载入失败(跳过): {e}", flush=True)
+
     # 逐股拼长表(避免一次性持有全市场大矩阵); 索引=日期, 不另存 date 列
     recs = []
     for i, s in enumerate(codes):
@@ -164,7 +214,12 @@ def build_feature_table(codes, exprs, return_close=False):
         # fwd_ret_1: T 日收盘买入、T+1 日收盘卖出收益(仅用于回测持仓, 防泄露用 shift(-1))
         d["fwd_ret_1"] = (c.shift(-1) / c - 1.0).astype("float32").values
         for name, panel in panels.items():
-            d[name] = panel[s].astype("float32").values if panel is not None else np.full(n, np.nan, "float32")
+            if panel is None:
+                d[name] = np.full(len(dates), np.nan, "float32")
+            elif s in panel.columns:
+                d[name] = panel[s].astype("float32").values
+            else:
+                d[name] = np.full(len(dates), np.nan, "float32")
         recs.append(pd.DataFrame(d, index=dates))
         if (i + 1) % 300 == 0:
             print(f"[build]  已处理 {i+1}/{n} 只", flush=True)
@@ -185,7 +240,7 @@ def build_feature_table(codes, exprs, return_close=False):
     print(f"[build] 标签齐备后 {long.shape} | {time.time()-t0:.1f}s", flush=True)
 
     # 横截面 z-score 标准化(对齐 v4 的 cross_section_zscore, 防个股量纲)
-    feat_cols = [name for name, _ in exprs]
+    feat_cols = [name for name, _ in exprs] + chip_feat_cols
     g = long.groupby("date")[feat_cols]
     mu = g.transform("mean")
     sd = g.transform("std")
@@ -267,6 +322,252 @@ def run_wfa(long, feat_cols, train_cap=500000):
             "code": osd["code"].values,
             "fused": fused,
             "fwd_ret_1": osd["fwd_ret_1"].values,
+        })
+        oos_detail.append(seg)
+    oos_detail = pd.concat(oos_detail, ignore_index=True) if oos_detail else pd.DataFrame()
+    return rows, imp_acc, folds, oos_detail
+
+
+# ---------------------------------------------------------------------------
+# 分块版(对齐 v4 内存策略): 时间分片 + 面板落盘缓存 + 断点续传 + TRAIN_CAP
+# 设计目标: 内存安全的分块构建。实测本机物理内存 ≈ 32GB, 此处仍按保守峰值 ≈ 1.3GB
+#   设计(不随股票数线性增长), 故全市场 5596 只 × 200 因子也远在预算内; 若内存更小
+#   亦不会崩(单片 long + 单个因子面板常驻)。
+#   Pass-1: 每个因子面板在全域算一次, 落盘 <tmp>/panel_<j>.parquet(断点续传),
+#           同时在线累积横截面 z-score 统计量(和/平方和/计数)。
+#   Pass-2: 按 CHUNK_MONTHS 时间切片; 每片只读覆盖股票的面板切片, 拼 long 子集,
+#           用 Pass-1 统计量做横截面 z-score + 标签(前30%), 原子写 feat_<ci>.parquet。
+#   run_wfa_chunked: 每折只读取覆盖该折窗的 feat 分片, IS 子采样到 TRAIN_CAP。
+# ---------------------------------------------------------------------------
+def _month_chunks(dates, chunk_months=12):
+    """把日期索引切成不重叠的月窗; 返回 [(d0,d1), ...] (含端点, Timestamp)。"""
+    d0 = pd.Timestamp(dates.min())
+    d1 = pd.Timestamp(dates.max())
+    chunks, start = [], d0
+    while start <= d1:
+        end = start + pd.DateOffset(months=chunk_months) - pd.Timedelta(days=1)
+        if end > d1:
+            end = d1
+        chunks.append((start, end))
+        start = end + pd.Timedelta(days=1)
+    return chunks
+
+
+def build_feature_table_chunked(codes, exprs, out_dir, chunk_months=12, lookback=252,
+                                tmp_dir=None, resume=True, keep_tmp=False, start=None):
+    """分块构建特征 store(对齐 v4)。返回 (feat_dir, feat_cols)。
+
+    out_dir/feat_<ci>.parquet : 每片 long 子集(date,code,fwd_ret_*,cls_*,feat_cols), float32。
+    内存峰值 ≈ 单片 long + 单个因子面板, 不随股票数线性增长, 故全市场可跑。
+    lookback : 每片前视预热天数(覆盖 rolling 因子窗, 默认 252≈1y)。
+    """
+    t0 = time.time()
+    os.makedirs(out_dir, exist_ok=True)
+    tmp = tmp_dir or os.path.join(out_dir, "_panels_tmp")
+    os.makedirs(tmp, exist_ok=True)
+    dates_all = load_panel("close", [codes[0]], start=start).index
+    feat_cols = [s for s, _ in exprs]
+    # ---- 筹码结构(路径依赖, 全域算一次, 常驻内存, 体量小) ----
+    chip_panels = {}
+    chip_feat_cols = []
+    if turnover_available():
+        try:
+            from factor_mining.chip_structure import build_chip_panels, CHIP_FIELDS
+            t1 = time.time()
+            chip_panels = build_chip_panels(codes) or {}
+            chip_feat_cols = [k for k in CHIP_FIELDS if k in chip_panels]
+            print(f"[chunk] 筹码结构特征 {len(chip_feat_cols)} 个 | {time.time()-t1:.1f}s", flush=True)
+        except Exception as e:
+            print(f"[chunk] 筹码结构特征失败(跳过): {e}", flush=True)
+    all_feat = feat_cols + chip_feat_cols
+    nfeat = len(all_feat)
+    n = len(dates_all)
+
+    # ---- Pass-1: 因子面板全域算一次 + 落盘 + 累积 z-score 统计量 ----
+    S = np.zeros((n, nfeat), "float64")
+    SQ = np.zeros((n, nfeat), "float64")
+    C = np.zeros((n, nfeat), "float64")
+    data = derive_variables(load_base_data(codes, start=start))
+    panel_files = []
+    for j, (s, tup) in enumerate(exprs):
+        pf = os.path.join(tmp, f"panel_{j:04d}.parquet")
+        panel_files.append(pf)
+        if resume and os.path.exists(pf):
+            p = pd.read_parquet(pf).reindex(index=dates_all, columns=codes)
+        else:
+            try:
+                p = evaluate_expr(tup, data).astype("float32")
+            except Exception:
+                p = pd.DataFrame(index=dates_all, columns=codes, dtype="float32")
+            p = p.reindex(index=dates_all, columns=codes)
+            p.to_parquet(pf)
+        v = p.values.astype("float64")          # (n_dates, n_stocks)
+        nv = np.isnan(v)
+        S[:, j] += np.where(nv, 0.0, v).sum(axis=1)
+        SQ[:, j] += np.where(nv, 0.0, v * v).sum(axis=1)
+        C[:, j] += (~nv).sum(axis=1)
+        if (j + 1) % 50 == 0:
+            print(f"[chunk] Pass-1 面板 {j+1}/{len(exprs)} | {time.time()-t0:.1f}s", flush=True)
+    del data
+    gc.collect()
+    # chip 统计量
+    for k, kname in enumerate(chip_feat_cols):
+        p = chip_panels[kname].reindex(index=dates_all, columns=codes)
+        v = p.values.astype("float64")
+        nv = np.isnan(v)
+        S[:, len(feat_cols) + k] += np.where(nv, 0.0, v).sum(axis=1)
+        SQ[:, len(feat_cols) + k] += np.where(nv, 0.0, v * v).sum(axis=1)
+        C[:, len(feat_cols) + k] += (~nv).sum(axis=1)
+    mean = S / np.maximum(C, 1)
+    var = SQ / np.maximum(C, 1) - mean * mean
+    sd = np.sqrt(np.maximum(var, 0))
+    print(f"[chunk] Pass-1 完成 {nfeat} 特征 | {time.time()-t0:.1f}s", flush=True)
+
+    # ---- Pass-2: 时间分片落盘 long 子集 ----
+    chunks = _month_chunks(dates_all, chunk_months)
+    close_cols = ["date", "code"] + [f"fwd_ret_{hz}" for hz in HORIZONS] + ["fwd_ret_1"]
+    for ci, (d0, d1) in enumerate(chunks):
+        fout = os.path.join(out_dir, f"feat_{ci:03d}.parquet")
+        if resume and os.path.exists(fout):
+            print(f"[chunk] {ci}/{len(chunks)-1} 已存在, 跳过", flush=True)
+            continue
+        w0 = d0 - pd.DateOffset(days=lookback)
+        w1 = d1 + pd.DateOffset(days=max(HORIZONS))
+        c_mask = (dates_all >= d0) & (dates_all <= d1)
+        w_mask = (dates_all >= w0) & (dates_all <= w1)
+        cidx = dates_all[c_mask]                      # 本片日期(DatetimeIndex)
+        widx = dates_all[w_mask]                      # 预热+前向窗口
+        c_pos = np.searchsorted(dates_all.values, cidx.values)   # 在 dates_all 中的位置
+        c_within_w = np.searchsorted(widx.values, cidx.values)   # 在 widx 中的位置
+        # 读因子面板切片(窗口) -> (n_chunk, n_stocks, n_feat)
+        feat_mat = np.full((len(cidx), len(codes), nfeat), np.nan, "float32")
+        for j in range(len(exprs)):
+            p = pd.read_parquet(panel_files[j]).reindex(index=widx, columns=codes)
+            feat_mat[:, :, j] = p.values[c_within_w]
+        for k, kname in enumerate(chip_feat_cols):
+            p = chip_panels[kname].reindex(index=widx, columns=codes)
+            feat_mat[:, :, len(feat_cols) + k] = p.values[c_within_w]
+        # 横截面 z-score(用全域统计量; mean/sd 为 numpy, 按 c_pos 按位置切片)
+        mu = mean[c_pos]                              # (n_chunk, nfeat)
+        sg = sd[c_pos]
+        feat_z = (feat_mat - mu[:, None, :]) / (sg[:, None, :] + 1e-8)
+        # 前向收益(窗口 close)
+        close_w = load_panel("close", codes, start=str(w0.date()), end=str(w1.date()))
+        fwd = {}
+        for hz in HORIZONS:
+            fwd[hz] = (close_w.shift(-hz) / close_w.shift(-1) - 1.0).reindex(index=cidx)
+        fwd1 = (close_w.shift(-1) / close_w - 1.0).reindex(index=cidx)
+        # 拼 long
+        recs = []
+        for si, code in enumerate(codes):
+            d = {"code": code}
+            for jj in range(nfeat):
+                d[all_feat[jj]] = feat_z[:, si, jj]
+            for hz in HORIZONS:
+                d[f"fwd_ret_{hz}"] = fwd[hz][code].values if code in fwd[hz] else np.full(len(cidx), np.nan)
+            d["fwd_ret_1"] = fwd1[code].values if code in fwd1 else np.full(len(cidx), np.nan)
+            recs.append(pd.DataFrame(d, index=cidx))
+        long_c = pd.concat(recs)
+        del recs, feat_mat, feat_z, close_w, fwd, fwd1
+        gc.collect()
+        long_c = long_c.reset_index().rename(columns={"index": "date"})
+        # 标签: 横截面前30% -> 1
+        for hz in HORIZONS:
+            long_c[f"cls_{hz}"] = long_c.groupby("date")[f"fwd_ret_{hz}"].transform(
+                lambda x: (x.rank(pct=True) >= 0.7).astype("int8"))
+        label_cols = [f"fwd_ret_{hz}" for hz in HORIZONS]
+        long_c = long_c.dropna(subset=label_cols).reset_index(drop=True)
+        # 类别列降精度, 其余 float32
+        long_c = long_c.astype({c: "float32" for c in all_feat + label_cols + ["fwd_ret_1"]}, errors="ignore")
+        # 原子写
+        _tmp = fout + ".tmp"
+        long_c.to_parquet(_tmp, index=False)
+        os.replace(_tmp, fout)
+        print(f"[chunk] {ci}/{len(chunks)-1} 落盘 {long_c.shape} "
+              f"[{d0.date()}~{d1.date()}] | {time.time()-t0:.1f}s", flush=True)
+        del long_c
+        gc.collect()
+    if not keep_tmp:
+        import shutil
+        shutil.rmtree(tmp, ignore_errors=True)
+    print(f"[chunk] 全部分片完成 out_dir={out_dir} | {time.time()-t0:.1f}s", flush=True)
+    return out_dir, all_feat
+
+
+def run_wfa_chunked(feat_dir, feat_cols, train_cap=2000000):
+    """从分片 store 跑 WFA(对齐 v4 Phase C): 每折只读取覆盖该折窗的 feat 分片, IS 子采样 TRAIN_CAP。
+
+    本机 ≈ 32GB, 默认 TRAIN_CAP=2_000_000(对齐 v4) 远在预算内; 样本外窗全量(不抽样)以保证评估无偏。
+    返回 (rows, imp_acc, folds, oos_detail) 与 run_wfa 完全兼容。
+    """
+    files = sorted(glob.glob(os.path.join(feat_dir, "feat_*.parquet")))
+    if not files:
+        raise RuntimeError("没有 feat 分片, 先运行 build_feature_table_chunked")
+    # 每个分片的日期范围(只读 date 列, 省 IO)
+    file_ranges = []
+    for f in files:
+        d = pd.read_parquet(f, columns=["date"])["date"]
+        if len(d):
+            file_ranges.append((f, pd.Timestamp(d.min()), pd.Timestamp(d.max())))
+    lo = min(fr[1] for fr in file_ranges)
+    hi = max(fr[2] for fr in file_ranges)
+    folds = wfa_folds(pd.date_range(lo, hi, freq="D"))
+    print(f"[wfa-chunked] 折数 {len(folds)}: " + " | ".join(
+        f"折{i+1} OOS {s.date()}~{e.date()}" for i, (_, _, s, e) in enumerate(folds)), flush=True)
+    rows, imp_acc, oos_detail = [], {}, []
+    read_cols = ["date", "code", "fwd_ret_1"] + [f"cls_{hz}" for hz in HORIZONS] \
+        + [f"fwd_ret_{hz}" for hz in HORIZONS] + feat_cols
+    for i, (is_s, is_e, oos_s, oos_e) in enumerate(folds, 1):
+        is_parts, oos_parts = [], []
+        for f, flo, fhi in file_ranges:
+            if fhi >= is_s and flo < is_e:
+                df = pd.read_parquet(f, columns=read_cols)
+                m = (df["date"] >= is_s) & (df["date"] < is_e)
+                is_parts.append(df[m])
+            if fhi >= oos_s and flo < oos_e:
+                df = pd.read_parquet(f, columns=read_cols)
+                m = (df["date"] >= oos_s) & (df["date"] < oos_e)
+                oos_parts.append(df[m])
+        if not is_parts or not oos_parts:
+            print(f"    折{i}: 无覆盖分片, 跳过", flush=True)
+            continue
+        isd = pd.concat(is_parts, ignore_index=True)
+        osd = pd.concat(oos_parts, ignore_index=True)
+        if len(isd) < 500 or len(osd) < 100:
+            print(f"    折{i}: 样本不足跳过 (IS={len(isd)}, OOS={len(osd)})", flush=True)
+            continue
+        if len(isd) > train_cap:
+            idx = isd.sample(train_cap, random_state=RANDOM_STATE).index
+            isd = isd.loc[idx]
+        Xis = isd[feat_cols].values.astype("float32")
+        Xos = osd[feat_cols].values.astype("float32")
+        best = _hp_search(Xis, isd["cls_5"].values)
+        print(f"    折{i}: IS={len(isd)} OOS={len(osd)} 最佳参数 {best}", flush=True)
+        probas = {}
+        for hz in HORIZONS:
+            m = XGBClassifier(n_estimators=300, nthread=4, eval_metric="auc",
+                              random_state=RANDOM_STATE, use_label_encoder=False, **best)
+            m.fit(Xis, isd[f"cls_{hz}"].values)
+            probas[hz] = m.predict_proba(Xos)[:, 1]
+            if hz == 5:
+                _raw = m.get_booster().get_score(importance_type="gain")
+                imp_acc = {feat_cols[int(k[1:])]: v for k, v in _raw.items()
+                           if k.startswith("f") and k[1:].isdigit() and int(k[1:]) < len(feat_cols)}
+        fused = np.mean([probas[hz] for hz in HORIZONS], axis=0)
+        auc5 = roc_auc_score(osd["cls_5"].values, probas[5]) if len(set(osd["cls_5"].values)) > 1 else np.nan
+        row = {"fold": i, "auc_single5": round(auc5, 4),
+               "ic_single5": round(spearmanr(probas[5], osd["fwd_ret_5"].values).correlation, 4)}
+        for hz in HORIZONS:
+            ys, yt = osd[f"cls_{hz}"].values, osd[f"fwd_ret_{hz}"].values
+            row[f"auc_fuse_{hz}"] = round(roc_auc_score(ys, fused), 4) if len(set(ys)) > 1 else np.nan
+            row[f"ic_fuse_{hz}"] = round(spearmanr(fused, yt).correlation, 4)
+        print(f"    折{i}: 单周期5日 AUC={row['auc_single5']:.3f}/IC={row['ic_single5']:+.4f} | "
+              f"融合 AUC=[{row['auc_fuse_5']:.3f},{row['auc_fuse_20']:.3f},{row['auc_fuse_60']:.3f}] "
+              f"IC=[{row['ic_fuse_5']:+.4f},{row['ic_fuse_20']:+.4f},{row['ic_fuse_60']:+.4f}]", flush=True)
+        rows.append(row)
+        seg = pd.DataFrame({
+            "date": osd["date"].values, "code": osd["code"].values,
+            "fused": fused, "fwd_ret_1": osd["fwd_ret_1"].values,
         })
         oos_detail.append(seg)
     oos_detail = pd.concat(oos_detail, ignore_index=True) if oos_detail else pd.DataFrame()
@@ -390,6 +691,15 @@ def main():
     ap.add_argument("--out", type=str, default="FACTOR_WFA_RESULTS.md")
     ap.add_argument("--factors_json", type=str, default=None,
                     help="collect 产物路径(复用, 避免重复挖掘)")
+    ap.add_argument("--chunked", action="store_true",
+                    help="分块模式(对齐 v4 内存策略, 全市场 8GB 可跑): 特征落盘 feat_<ci>.parquet")
+    ap.add_argument("--out_dir", type=str, default="feat_store",
+                    help="分块模式特征 store 目录(默认 ./feat_store)")
+    ap.add_argument("--tmp_dir", type=str, default=None,
+                    help="分块 Pass-1 面板缓存目录(默认 <out_dir>/_panels_tmp)")
+    ap.add_argument("--keep_tmp", action="store_true", help="分块完成后保留面板缓存")
+    ap.add_argument("--lookback", type=int, default=252, help="分块每片预热天数(默认 252)")
+    ap.add_argument("--chunk_months", type=int, default=12, help="分块月窗(默认 12)")
     args = ap.parse_args()
 
     factors = None
@@ -436,8 +746,15 @@ def main():
         print(f"[wfa] 用于验证的因子: {len(exprs)} (发现 {len(factors)})", flush=True)
 
         codes = list_stocks(args.stocks)
-        long, feat_cols = build_feature_table(codes, exprs)
-        rows, imp_acc, folds, oos_detail = run_wfa(long, feat_cols)
+        if args.chunked:
+            feat_dir, feat_cols = build_feature_table_chunked(
+                codes, exprs, args.out_dir, chunk_months=args.chunk_months,
+                lookback=args.lookback, tmp_dir=args.tmp_dir, resume=True,
+                keep_tmp=args.keep_tmp)
+            rows, imp_acc, folds, oos_detail = run_wfa_chunked(feat_dir, feat_cols)
+        else:
+            long, feat_cols = build_feature_table(codes, exprs)
+            rows, imp_acc, folds, oos_detail = run_wfa(long, feat_cols)
         bt = backtest(oos_detail)
         if bt:
             print(f"\n[回测] {bt['start']}~{bt['end']} 年化 {bt['ann_ret']:+.1%} | "

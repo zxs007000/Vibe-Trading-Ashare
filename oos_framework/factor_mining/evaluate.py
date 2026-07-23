@@ -62,10 +62,17 @@ def ic_series(factor: pd.DataFrame, fwd: pd.DataFrame) -> np.ndarray:
     """
     逐日计算横截面 Rank-IC(对因子与向前收益先做截面排名, 再做 Pearson = Spearman)。
     返回长度 = 交易日数的 1D 数组, 无效日记为 NaN。
+
+    防段错误纪律(2026-07-23): numba 内核无边界检查, F/R 形状不一致会 access violation
+    杀死整个进程(try/except 拦不住)。进内核前必须: ① fwd 按 factor 强制对齐
+    ② inf → NaN(除法/相关表达式会产生 inf, 污染 numba 内核累加)。
     """
-    f = factor.rank(pct=True, axis=1).values.astype(np.float64)
-    r = fwd.rank(pct=True, axis=1).values.astype(np.float64)
-    return _rank_ic_nb(f, r)
+    fwd = fwd.reindex(index=factor.index, columns=factor.columns)
+    f = factor.replace([np.inf, -np.inf], np.nan).rank(pct=True, axis=1).values.astype(np.float64)
+    r = fwd.replace([np.inf, -np.inf], np.nan).rank(pct=True, axis=1).values.astype(np.float64)
+    if f.shape != r.shape:  # 双保险
+        return np.full(len(factor), np.nan)
+    return _rank_ic_nb(np.ascontiguousarray(f), np.ascontiguousarray(r))
 
 
 def evaluate_factor(factor: pd.DataFrame, fwd_dict: dict[int, pd.DataFrame],

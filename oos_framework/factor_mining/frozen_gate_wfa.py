@@ -40,7 +40,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr, rankdata
 
-from factor_wfa import (build_feature_table, backtest, wfa_folds,
+from factor_mining.factor_wfa import (build_feature_table, backtest, wfa_folds,
                         _t2l, _l2t, MAX_FACTORS, RANDOM_STATE)
 from factor_mining import list_stocks
 

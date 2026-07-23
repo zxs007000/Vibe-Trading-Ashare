@@ -114,3 +114,18 @@ agent/ops/
 oos_framework/screen_results/_wfa_cache/
 oos_framework/screen_results/triple/run.log
 oos_framework/screen_results/defensive/run.log
+
+# ── Factor mining 生成物（可再生成, 不入库; 仅保留源码/RESULT文档/因子json）──
+oos_framework/factor_mining/*.parquet
+oos_framework/factor_mining/*.log
+oos_framework/factor_mining/__pycache__/
+oos_framework/factor_mining/wfa_v2_store/
+oos_framework/factor_mining/wfa_v2_store_full/
+oos_framework/factor_mining/nul
+oos_framework/data/
+oos_framework/feat_store_150/
+oos_framework/screen_results/
+_cdp_deskpet_test*.js
+_preview_*.png
+tmp_*.py
+frontend/_cdp_probe.py
