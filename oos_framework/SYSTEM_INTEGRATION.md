@@ -275,7 +275,7 @@
 | 危机段内 | 裸 vs v4 回撤 | -29.5% → -18.6% |
 | SHAP | chip 平均排名 / Spearman | 14/46 / 0.57 |
 | 因子图书馆 | 冻结/衰减/再冻结 | 40因子 / 21冻结 / 4衰减 / 未触发再冻结 |
-| 信号融合 | frozen vs xgb OOS rank-IC；日/周换手 A/B | +0.083 vs +0.014（元融合收敛为信任 frozen）；周换手把年化 −20%~−29% 翻正至 +1.5%~+11.2%（M1 最优 +11.2%/夏普0.60） |
+| 信号融合 | frozen vs xgb OOS rank-IC；日/周换手 A/B；接组合优化器 | +0.083 vs +0.014（元融合收敛为信任 frozen）；周换手翻正至 +1.5%~+11.2%；再叠约束优化冲到 +12.6%~+19.2%（M1 最优 +19.2%/夏普0.93） |
 | 股灾抗压 | 2008 回撤削减 | +17.2pp |
 
 ---
@@ -297,7 +297,10 @@ oos_framework/factor_mining/
 ├── FACTOR_ZOO_REPORT.md    # 因子图书馆生命周期报告(40因子/21冻结/4衰减)
 ├── signal_meta_learner.py  # 信号融合器: frozen ICIR × XGBoost 元学习融合(体制条件)
 ├── META_SIGNAL_RESULTS.md  # 信号融合器实证报告(日/周换手 A/B 四路对照 + 体制分段)
-├── portfolio_optimizer.py  # 组合优化器: 信号→约束型多头组合(可落地的配置层)
+├── portfolio_optimizer.py  # 组合优化器: 信号→约束型多头组合(可落地的配置层, 支持 rebalance_freq 周换手)
+├── connect_optimizer.py    # 串联: 信号融合器四路信号 → 组合优化器 A/B(周换手低本版 + 约束优化)
+├── meta_ods_cache.parquet  # 四路信号 oos_detail 缓存(避免每次重跑 WFA)
+├── PORTFOLIO_OPT_SIGNAL_RESULTS.md  # 串联实证报告(朴素周换手 vs 约束优化周换手 A/B)
 ├── demo_portfolio_optimizer.py  # 真实数据 A/B: naive 等权 vs 约束优化
 ├── run_wfa_v2.py           # P4 全池 WFA 编排
 ├── shap_validate_v2.py     # P6 SHAP 终验
@@ -435,8 +438,32 @@ w = zoo.weights_vector(feat_cols)             # 对齐的冻结权重
 - 体制切换诊断：本数据**无体制出现 xgb 反超**，故 M1 自动收敛为「重 frozen、轻 xgb」——该逻辑已就位，一旦未来某体制 xgb IC 占优会自动切权（即 `REGIME_TRAINING_PLAN.md` 哲学的信号级落地）。
 - 推荐生产信号：**M1 体制融合（主）周换手**（本样本年化最优 +11.2%、夏普 0.60）；更稳健/零重训成本方案回退 **frozen 周换手**；**勿直接上线裸 xgb**（最弱，且勿用日换手上线任何信号）。注意：此为弱 alpha 信号，绝对收益受 2021-2025 震荡市拖累，实战应接 §11 组合优化器做配置层优化。
 
-自测：`python signal_meta_learner.py --selftest`（合成数据冒烟，验证融合/岭回归逻辑、体制切换生效）。
+自测：`python signal_meta_learner.py --selftest`（合成 data 冒烟，验证融合/岭回归逻辑、体制切换生效）。
+
+## 14. 信号融合器 → 组合优化器 串联（connect_optimizer，新增 2026-07-24）
+
+把 §13 的四路信号各自接入 §11 组合优化器，在**周换手低本版**基础上验证「组合层约束优化」的增量价值（A/B 口径完全一致：周换手 freq=5 + 20bps + 全市场等权基准）。
+
+150 只、OOS 2021-10~2025-10、优化约束 = 个股 ≤5% 上限 + 周频低换手 + 换手上限 0.3（行业/市值中性本轮未接，缺行业元数据）：
+
+| 信号 | 朴素周换手 | 约束优化周换手 | Δ | 优化夏普 |
+|---|---|---|---|---|
+| 冻结 ICIR（基准） | +9.5% | +18.0% | +8.4pp | 0.90 |
+| XGBoost WFA（基准） | +3.2% | +12.6% | +9.4pp | 0.63 |
+| **M1 体制融合（主）** | +11.2% | **+19.2%** | +8.0pp | **0.93** |
+| M2 岭回归（对照） | +1.5% | +15.8% | +14.3pp | 0.76 |
+
+M1 灵敏度（验证「选股集中」vs「换手约束」贡献）：无约束仅 ≤5% → +18.9%（日成本 0.00027）；轻约束 ≤5%+换手限0.3 → +19.2%（0.00012）；紧约束 ≤3%+换手限0.2 → +19.1%（0.00008）。换手上限把日成本从 0.00027 砍到 0.00008，年化几乎不损——约束 optimizer 在弱 alpha 上纯赚成本红利。
+
+结论：
+- **「周换手 + 约束优化」是弱 alpha 信号落地的完整解**：朴素日换手全负（§13 日换手表），周换手翻正（+1.5%~+11.2%），再叠组合优化冲到 **+12.6%~+19.2%**，主推 **M1 体制融合 周换手 + 约束优化 = +19.2%/年、夏普 0.93**。
+- 优化器增量来自：① 个股权重 ≤5% 上限抑制单票黑天鹅；② 换手上限压低调仓日冲击；③ softmax 倾斜适度集中高信号名。
+- 后续扩展：接 SW 行业/市值面板做中性化、接协方差做方差项风险最优化（`optimize_day_exact`）、叠加防御门控 `gate=True`。
+
+用法：`python connect_optimizer.py --stocks 150 --out PORTFOLIO_OPT_SIGNAL_RESULTS.md`（信号用 `meta_ods_cache.parquet` 缓存，避免每次重跑 ~5min WFA）。
 
 ---
 
-*文档由系统整合任务生成（2026-07-23 初版，2026-07-24 增补组合优化器 / 因子图书馆 / 信号融合器章节），覆盖数据湖→挖掘→训练→回测→门控→配置→信号融合全链路，所有数字均来自 `RESULT_*.md` / `PORTFOLIO_OPT_RESULTS.md` / `FACTOR_ZOO_REPORT.md` / `META_SIGNAL_RESULTS.md` 实证产出。*
+
+
+*文档由系统整合任务生成（2026-07-23 初版，2026-07-24 增补组合优化器 / 因子图书馆 / 信号融合器 / 信号→优化器串联章节），覆盖数据湖→挖掘→训练→回测→门控→配置→信号融合→组合优化全链路，所有数字均来自 `RESULT_*.md` / `PORTFOLIO_OPT_RESULTS.md` / `FACTOR_ZOO_REPORT.md` / `META_SIGNAL_RESULTS.md` / `PORTFOLIO_OPT_SIGNAL_RESULTS.md` 实证产出。*

@@ -129,3 +129,7 @@ _cdp_deskpet_test*.js
 _preview_*.png
 tmp_*.py
 frontend/_cdp_probe.py
+
+# 信号融合器→组合优化器 串联的派生缓存(可由 connect_optimizer.py --recompute 重建)
+meta_ods_cache.parquet
+oos_framework/factor_mining/meta_ods_cache.parquet
