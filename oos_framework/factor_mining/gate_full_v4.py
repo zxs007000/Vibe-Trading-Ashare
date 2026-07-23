@@ -73,6 +73,9 @@ def tilted_daily(od: pd.DataFrame, defense: pd.DataFrame,
 
     tc_map = tilt.reindex(df["date"].unique()).fillna(0.0).to_dict()
 
+    # 温度系数: 控制softmax锐度, 防止熊市fused全负时退化成单点押注
+    SOFTMAX_TEMP = 0.5    # 越小越平滑(等权), 越大越集中
+
     def _w(g):
         sel = g[g["rk"] <= top_frac]
         K = len(sel)
@@ -80,8 +83,10 @@ def tilted_daily(od: pd.DataFrame, defense: pd.DataFrame,
             return 0.0
         tc = min(float(tc_map.get(g.name, 0.0)), TILT_CAP)
         w_eq = np.full(K, 1.0 / K)
-        e = sel["eff"].values.astype(float)
-        e = e - e.max()
+        # 用截面rank(0~1)代替原始fused, 避免符号问题; 乘Dtilde后softmax
+        rnk = sel["fused"].rank(pct=True).values   # 0~1, 无负值
+        eff = rnk * sel["Dtilde"].values
+        e = SOFTMAX_TEMP * (eff - eff.max())
         wd = np.exp(e)
         wd = wd / wd.sum()
         w = (1.0 - tc) * w_eq + tc * wd

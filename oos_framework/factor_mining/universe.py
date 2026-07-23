@@ -75,8 +75,17 @@ def build_universe(min_listed_days: int = MIN_LISTED_DAYS,
     listed_days = amt.notna().sum(axis=0)
     new_removed = listed_days[listed_days < min_listed_days].index.tolist()
 
-    recent_amt = amt.tail(liq_window).mean(axis=0)
-    illiq_removed = recent_amt[recent_amt < min_avg_amount].index.tolist()
+    # 流动性过滤: 用**全样本首个有效 liq_window 窗口**的均值(入场时判定, 不含未来信息).
+    # 旧版 amt.tail(liq_window).mean() 用数据集最后 60 天 → 前视泄露(用未来流动性决定历史入池).
+    # 新版: 每只股票取其**前 liq_window 个有效交易日**的均值 → 该股上市初期的流动性, 无前视.
+    illiq_removed = []
+    for c in codes:
+        s = amt[c].dropna()
+        if len(s) < min_listed_days:
+            continue  # 已被次新规则剔除
+        first_window = s.iloc[:liq_window]
+        if first_window.mean() < min_avg_amount:
+            illiq_removed.append(c)
     illiq_removed = [c for c in illiq_removed if c not in set(new_removed)]
 
     removed = set(new_removed) | set(illiq_removed)
@@ -90,6 +99,7 @@ def build_universe(min_listed_days: int = MIN_LISTED_DAYS,
         "final": len(final),
         "params": {"min_listed_days": min_listed_days, "liq_window": liq_window,
                    "min_avg_amount": min_avg_amount},
+        "liq_method": "first_window (无前视, 旧版tail为前视已修)",
     }
     if verbose:
         print(f"[universe] 全市场 {n0} → 剔ST {len(st_removed)} → 剔次新 {len(new_removed)}"

@@ -180,10 +180,13 @@ def forward_returns(close_panel: pd.DataFrame, horizons=(5, 20, 60)) -> dict[int
     """
     计算各 horizon 的向前收益率面板（t 时刻持有 h 日的收益）。
     因子在 t 日的值用于预测该向前收益, 是 IC 计算的标准目标。
+
+    口径: 从 T+1 起算(close.shift(-h) / close.shift(-1) - 1), 与 factor_wfa.build_feature_table
+    的 WFA 标签一致, 避免 T 日收盘价已知的泄露; 同时与 IC 筛选口径统一。
     """
     out = {}
     for h in horizons:
-        out[h] = close_panel.shift(-h) / close_panel - 1.0
+        out[h] = close_panel.shift(-h) / close_panel.shift(-1) - 1.0
     return out
 
 

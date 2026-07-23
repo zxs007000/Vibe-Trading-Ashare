@@ -81,13 +81,16 @@ def chip_single(open_, high, low, close, volume, turnover,
     span = pmax - pmin
 
     H = np.zeros(n_bins, dtype="float64")
+    last_valid_to = 5.0   # 前一日有效换手率(ffill 用, 初始 5% 避免首日极端)
 
     for t in range(T):
         to = turnover[t]
         if not np.isfinite(to) or to <= 0:
-            # 无换手率(停牌/缺失): 仅衰减, 不注入
-            H *= (1.0 - 0.0)
+            # 停牌/缺失: 用前一日有效换手率衰减(而非不衰减), 模拟筹码老化
+            decay = max(0.0, 1.0 - min(last_valid_to, 100.0) / 100.0)
+            H = H * decay
         else:
+            last_valid_to = to   # 更新有效换手率
             decay = max(0.0, 1.0 - min(to, 100.0) / 100.0)
             H = H * decay
             lo, hi = low[t], high[t]

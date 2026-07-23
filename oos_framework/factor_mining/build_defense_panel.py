@@ -43,16 +43,31 @@ def build() -> pd.DataFrame:
     # --- 价量波动族 ---
     vol_20 = ret.rolling(20, min_periods=10).std()
     # 特质波动: 市场模型残差滚动std (等权市场收益作基准)
-    # 注意: cov 按股票索引, mkt 按日期索引, 必须用 numpy 广播, 不能用 pandas 对齐乘法
+    # 修复 PIT: 旧版用全样本均值去均值化 → 用了未来信息. 新版用滚动 60d 窗口内回归,
+    # beta 和残差都只用窗口内数据 → 无前视.
     mkt = ret.mean(axis=1)
     mkt_arr = mkt.values
-    mkt_dm = mkt_arr - mkt_arr.mean()
     ret_arr = ret.values
-    cov_xm = (ret_arr - ret_arr.mean(axis=0)) * mkt_dm[:, None]
-    beta = cov_xm.sum(axis=0) / (mkt_dm ** 2).sum()
-    resid = ret_arr - beta[None, :] * mkt_arr[:, None]
-    resid = pd.DataFrame(resid, index=ret.index, columns=ret.columns)
-    ivol_60 = resid.rolling(60, min_periods=30).std()
+    n_dates, n_codes = ret_arr.shape
+    ivol_arr = np.full((n_dates, n_codes), np.nan, dtype="float64")
+    win = 60
+    for t in range(win, n_dates):
+        w_ret = ret_arr[t - win:t]          # (60, n_codes) 窗口内
+        w_mkt = mkt_arr[t - win:t]           # (60,)
+        mkt_dm = w_mkt - w_mkt.mean()
+        mkt_ss = (mkt_dm ** 2).sum()
+        if mkt_ss < 1e-12:
+            continue
+        for j in range(n_codes):
+            rj = w_ret[:, j]
+            mask = np.isfinite(rj) & np.isfinite(mkt_dm)
+            if mask.sum() < 30:
+                continue
+            rj_dm = rj[mask] - rj[mask].mean()
+            beta_j = (rj_dm * mkt_dm[mask]).sum() / ((mkt_dm[mask] ** 2).sum() + 1e-12)
+            resid_j = rj[mask] - beta_j * mkt_dm[mask]
+            ivol_arr[t, j] = resid_j.std()
+    ivol_60 = pd.DataFrame(ivol_arr, index=ret.index, columns=ret.columns)
     downside = ret.clip(upper=0.0)
     downside_vol_60 = downside.rolling(60, min_periods=30).std()
     print(f"[defense] 波动族算完 {vol_20.shape} | {time.time()-t0:.0f}s", flush=True)

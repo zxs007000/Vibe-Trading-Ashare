@@ -96,22 +96,33 @@ def _rowwise_corr(A: np.ndarray, B: np.ndarray) -> np.ndarray:
 
 
 def frozen_icir_weights(long: pd.DataFrame, feat_cols, is_cut) -> tuple:
-    """IS 期逐日 rank-IC → ICIR, 冻结 IC>0 & ICIR>0 的因子, 权重=ICIR(归一)."""
+    """IS 期逐日 rank-IC → ICIR, 冻结 IC>0 & ICIR>0 的因子, 权重=ICIR(归一).
+
+    向量化优化: 用 3D 矩阵 (date, code, factor) 一次算全部因子的 rank,
+    避免逐因子 pivot(旧版 55 次 × 1M 行 → 新版 1 次堆叠).
+    """
     isd = long[long["date"] < is_cut]
+    # 一次性 pivot fwd_ret, 算 rank
     piv_fwd = isd.pivot(index="date", columns="code", values="fwd_ret_1").values.astype(float)
-    piv_fwd = np.nan_to_num(piv_fwd, nan=0.0)
-    Rr = np.array([rankdata(r) for r in piv_fwd])
-    icm, icir = [], []
-    for f in feat_cols:
+    fwd_rank = np.array([rankdata(np.nan_to_num(r, nan=0.0)) for r in piv_fwd])  # (n_dates, n_codes)
+    # 堆叠所有因子: (n_dates, n_codes, n_factors)
+    n_dates, n_codes = fwd_rank.shape
+    n_feat = len(feat_cols)
+    fac_ranks = np.empty((n_dates, n_codes, n_feat), dtype="float64")
+    for j, f in enumerate(feat_cols):
         piv = isd.pivot(index="date", columns="code", values=f).values.astype(float)
-        piv = np.nan_to_num(piv, nan=0.0)
-        Fr = np.array([rankdata(r) for r in piv])
-        c = _rowwise_corr(Fr, Rr)
-        m, s = np.nanmean(c), np.nanstd(c)
-        icir.append(m / (s + 1e-9) * np.sqrt(252))
-        icm.append(m)
-    icir = np.array(icir)
-    icm = np.array(icm)
+        for i in range(n_dates):
+            fac_ranks[i, :, j] = rankdata(np.nan_to_num(piv[i], nan=0.0))
+    # 向量化 rank-IC: 逐日逐因子 Pearson(ranked) = 3D 广播
+    fr = fac_ranks - fac_ranks.mean(axis=1, keepdims=True)     # 去均值
+    rr = fwd_rank - fwd_rank.mean(axis=1, keepdims=True)
+    # (n_dates, 1, n_codes) × (n_dates, n_codes, 1) → (n_dates, n_codes, n_factors)
+    num = (fr * rr[:, :, None]).sum(axis=1)                     # (n_dates, n_factors)
+    den = np.sqrt((fr ** 2).sum(axis=1) * (rr ** 2).sum(axis=1)[:, None]) + 1e-9
+    daily_ic = num / den                                        # (n_dates, n_factors)
+    icm = np.nanmean(daily_ic, axis=0)                          # (n_factors,)
+    ic_std = np.nanstd(daily_ic, axis=0)
+    icir = icm / (ic_std + 1e-9) * np.sqrt(252)
     sel = (icm > 0) & (icir > 0)
     w = np.where(sel, icir, 0.0)
     w = w / (w.sum() + 1e-12)
