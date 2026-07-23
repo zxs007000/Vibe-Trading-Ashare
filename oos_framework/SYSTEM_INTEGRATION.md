@@ -290,6 +290,8 @@ oos_framework/factor_mining/
 ├── mine_v2.py              # 四方向挖掘编排 → factors_v2_3dim.json
 ├── factor_screen.py        # P3 衰减感知筛选 → factors_v2_selected.json (40)
 ├── factor_wfa.py           # build_feature_table_chunked / run_wfa_chunked / backtest
+├── portfolio_optimizer.py  # 组合优化器: 信号→约束型多头组合(可落地的配置层)
+├── demo_portfolio_optimizer.py  # 真实数据 A/B: naive 等权 vs 约束优化
 ├── run_wfa_v2.py           # P4 全池 WFA 编排
 ├── shap_validate_v2.py     # P6 SHAP 终验
 ├── gate_full_v3.py         # 双尾(上证+巴指+衰减+耦合)
@@ -316,8 +318,36 @@ stcok-worm/
 2. **ML 双模型第三腿**：市场 regime 模型 + 个股 name-risk 模型（用户双尾设计中的 ML 腿），尚未建。
 3. **拥挤度 18 维接入变量池**：当前仅价量+chip 两维度入池，方法论第三维度待接通。
 4. **严格 PIT ST 历史**：`universe.py` 名称表为当前快照，历史 ST 状态需接历史记录以增强严谨性。
-5. **扣费回测**：当前回测为毛收益，实盘需叠加交易成本/冲击。
+5. **扣费回测 / 组合优化**：✅ 已解决。`portfolio_optimizer.py` 在 `backtest` 的等权 top-N 之外新增**约束型配置层**（个股上限 + 分组中性 + 换手上限 + 20bps 交易成本模型），`backtest_optimized()` 与 `backtest` 同指标口径。详见第 11 节与 `PORTFOLIO_OPT_RESULTS.md`。
 
 ---
 
-*文档由系统整合任务生成（2026-07-23），覆盖数据湖→挖掘→训练→回测→门控全链路，所有数字均来自 `RESULT_*.md` 实证产出。*
+## 11. 组合优化器模块（新增 2026-07-24）
+
+把"选股信号"升级为"可落地的组合"。两阶段（选股 → 配置）、投影+收缩法求解（纯 numpy，无外部求解器依赖），约束：多头 / 满仓 / 个股权重上限 / 分组中性（行业·市值·自定义）/ 换手上限。
+
+接口：
+```python
+from factor_mining.portfolio_optimizer import backtest_optimized, compare_backtests, optimize_panel
+r_opt = backtest_optimized(oos_detail, universe_frac=0.3, max_w=0.03,
+                           group_neutral=True, neutral='cap', turnover_limit=0.3)
+cmp   = compare_backtests(oos_detail, universe_frac=0.3, max_w=0.03, turnover_limit=0.3)
+```
+
+真实数据 A/B（冻结因子策略，400 只，OOS rank-IC=+0.085，扣 20bps）：
+
+| 指标 | naive 等权 top-30% | 约束优化 | 变化 |
+|---|---|---|---|
+| 年化（净） | −20.9% | **+4.5%** | +25.3pp |
+| 夏普 | −1.03 | **+0.31** | +1.34 |
+| 最大回撤 | −67.3% | **−35.9%** | +31.3pp |
+| 日均交易成本 | 0.00166 | **0.00060** | −64% |
+
+> 本环境数据湖无行业分类、无市值快照、筹码/换手率湖为空（chip 因子为 NaN），故真实信号弱于 headline；优化器在弱信号下仍靠**权重上限+中性化+换手约束**把亏损组合扭转为盈利、回撤腰斩、成本减半。接入行业/市值数据后效果更显著。
+> 换手权衡：本样本弱信号下换手越紧收益反而越高（0.15→+22.2% vs ∞→+19.2%），说明约束换手可抑制追逐噪声的频繁调仓。
+
+自测：`python portfolio_optimizer.py --selftest`（约束/中性/换手断言全过）。
+
+---
+
+*文档由系统整合任务生成（2026-07-23 初版，2026-07-24 增补组合优化器章节），覆盖数据湖→挖掘→训练→回测→门控→配置全链路，所有数字均来自 `RESULT_*.md` / `PORTFOLIO_OPT_RESULTS.md` 实证产出。*
